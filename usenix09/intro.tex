@@ -1,0 +1,157 @@
+% -*- TeX-master: "paper.tex"; TeX-PDF-mode: t; ispell-local-pdict: "words" -*-
+
+\section{Introduction}
+
+Deployments of consolidated storage using Storage Area Networks (SANs)
+are increasing, motivated by universal access to data from
+anywhere, ease of backup, flexibility in provisioning, and centralized
+administration.  SAN arrays already form the backbone of modern data
+centers by providing consolidated data access for multiple hosts
+simultaneously.  This trend is further fueled by the proliferation of
+virtualization technologies, which rely on shared storage to support
+features such as live migration of virtual machines (VMs) across hosts.
+
+SANs provide multiple hosts with direct SCSI access to shared
+storage volumes.  Regular file systems assume exclusive
+access to the disk and would quickly
+corrupt a shared disk.  To tackle this, numerous shared disk cluster
+file systems have been developed, including VMware
+VMFS~\cite{vmfsdatasheet}, RedHat GFS~\cite{preslan99gfs}, and IBM
+GPFS~\cite{schmuck02gpfs}, which use distributed locking to coordinate
+concurrent access
+%to the shared file system
+between multiple hosts.
+
+Cluster file systems play an important role in virtualized data
+centers, where multiple physical hosts each run potentially hundreds
+of virtual machines whose virtual disks are stored as regular
+files in the shared file system.  SANs provide hosts access to shared storage
+for VM disks with near native SCSI performance while also enabling
+advanced features like live migration, load balancing, and failover of
+VMs across hosts.
+
+These shared file systems represent an excellent opportunity for
+detecting and coalescing duplicate data.  Since they store data from
+multiple hosts, not only do they contain more data, but data
+redundancy is also more likely.  Shared storage for VMs is a
+ripe application for deduplication because common system
+and application files are repeated across VM disk images and hosts can
+automatically and transparently share data between and within VMs.
+This is especially true of virtual desktop infrastructures
+(VDI)~\cite{vdi-doc}, where desktop machines are virtualized,
+consolidated into data centers, and accessed via thin clients.  Our
+experiments show that a real enterprise VDI deployment can expend as much as
+80\% of its overall storage footprint on duplicate data from VM disk
+images. Given the desire to lower costs, such waste provides
+motivation to reduce the storage needs of virtual machines both in
+general and for VDI in particular.
+
+Existing deduplication techniques~\cite{bolosky00sis, douceur02farsitededup, 
+  hydrastor-fast09, centeradatasheet, hong04sandedup,
+  netapp-asis-website, quinlan02venti, rhea-foundation,
+  zhu08datadomain}
+\XXX[Austin][Cut down the more redundant ones?]
+rely on centralized file systems, require cross-host communication for
+critical file system operations, perform
+deduplication in-band, or use content-addressable storage.
+All of these approaches have limitations in our domain.
+Centralized techniques would be difficult to extend to a setting with
+no centralized component other than the disk itself.  Existing
+decentralized techniques require cross-host communication for most
+operations, often including reads.  Performing
+deduplication in-band with writes to a live file system can degrade
+overall system bandwidth and increase IO latency.  Finally,
+content-addressable storage, where
+data is addressed by its content hash, also suffers from performance
+issues related to expensive metadata lookups as well as loss of
+spatial locality~\cite{cas-experiences}.
+
+% Austin: Specifically, we need something decentralized both because
+% our FS is decentralized and because we can't suffer the performance
+% or fault tolerance impact of a centralized solution.  We can't do
+% deduplication in-band because our file system is live and we can't
+% cache the index in a decentralized setting.  CAS suffers from
+% similar performance penalties in our setting and destroys spatial
+% locality.
+
+Our work addresses deduplication in the decentralized setting of
+VMware's VMFS cluster file system.  Unlike existing solutions, \DeDe
+coordinates a cluster of hosts to cooperatively perform block-level
+deduplication of the live, shared file system.  It takes advantage of
+the shared disk as the only centralized point in the system and does not
+require cross-host communication for regular file system operations,
+retaining the direct-access advantage of SAN file systems.  As a
+result, the only failure that can stop deduplication is a failure of
+the SAN itself, without which there is no file system to deduplicate.
+Because \DeDe is an online system for primary storage, all
+deduplication is best-effort and performed as a background process,
+out-of-band from writes, in order to minimize impact on system
+performance.  Finally, unlike other systems, \DeDe builds block-level
+deduplication atop an existing file system and takes advantage of
+regular file system abstractions, layout policy, and block addressing.
+As a result, deduplication introduces no additional metadata IO when
+reading blocks and permits in-place writes to blocks that have no
+duplicates.
+
+\XXX[Deduplication is completely transparent to virtual machines
+running on top.]
+
+% Finally, \DeDe is built atop an existing file system and
+% takes advantage of regular file system abstractions, layout policy,
+% and block addressing.  \XXX[And no impact on unique blocks]
+
+% Unlike CAS, \DeDe uses content hashes only for the purpose of
+% detecting duplicates.
+
+This paper presents the design of \DeDe.  We have implemented a
+functional prototype of \DeDe for VMware ESX Server~\cite{esx-doc}
+atop VMware VMFS.  Using a variety of synthetic and realistic
+workloads, including data from an active corporate VDI installation,
+we demonstrate that \DeDe can reduce VM storage requirements by
+upwards of 80\% at a modest performance overhead.
+% We also present an analysis of the effectiveness of deduplication
+% for a corporate VDI installation.
+
+
+% Our paper has four main contributions:
+% \begin{itemize}
+% \item A deduplication mechanism that does not require any central
+%   computation, can tolerate an arbitrary number of arbitrary hosts
+%   failing,\footnote{\DeDe cannot tolerate the disk failing, but if the
+%     disk fails, the file system fails, and there is nothing left to 
+%     deduplicate. \XXX[Austin][What a terrible place for a footnote.
+%     This should be a key part of wherever we talk about taking
+%     advantage of the SAN as our one central point.]} and can scale so
+%   that clusters with more hosts and
+%   thus a greater rate of file system modification also have a
+%   greater ability to deduplicate.
+% \item An approach to layering deduplication on top of an existing file
+%   system that maintains the underlying file system's layout policy for
+%   unique blocks in order to keep files sequential whenever possible
+%   and that manipulates individual file system blocks without violating
+%   file system addressing abstractions.
+% \item A block-level deduplication mechanism that operates on a live
+%   file system without introducing additional metadata IO when reading
+%   any block or when writing to unique blocks, and that permits
+%   in-place writes to unique blocks.
+% \item An analysis of the effectiveness of deduplication for a
+%   corporate virtual desktop infrastructure (VDI) installation.
+%   \XXX[Possibly expand to include other evaluation bits]
+% \end{itemize}
+
+% * A variation on CAS that optimizes for unique blocks to allow for
+% in-place updates (which is especially important with block
+% allocation is expensive)
+% * An arena design that takes advantage of underlying file system
+% policy to keep files sequential whenever possible
+
+%\XXX[Double check this.]
+%
+Section~\ref{sec:overview} provides an overview of the architecture of our
+system and our goals. Section~\ref{sec:design} details the system's
+design and implementation.
+We provide a quantitative evaluation of our system
+in Section~\ref{sec:evaluation}, followed by a discussion of related
+work in Section~\ref{sec:related}.  Finally,
+we conclude in Section~\ref{sec:conclusion}.
+

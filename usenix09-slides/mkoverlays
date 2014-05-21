@@ -1,0 +1,211 @@
+#!/usr/bin/python
+
+from xml.dom.minidom import parse
+import sys, os, re
+import warnings
+
+warnings.filterwarnings("ignore",
+                        category=RuntimeWarning,
+                        message="tmpnam", module=__name__)
+
+inkscapeNS = "http://www.inkscape.org/namespaces/inkscape"
+sodipodiNS = "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+
+class InkscapeDoc(object):
+    def __init__(self, filename):
+        self.__filename = filename
+        self.__counter = 1
+        self.__xml = None
+        self.__q = []
+        filename = os.path.basename(filename)
+        filename = filename[:filename.rfind(".")]
+        self.__basename = filename
+
+    def __force(self):
+        if self.__xml:
+            return
+
+        print >> sys.stderr, "Deconstructing", self.__filename
+        self.__xml = parse(self.__filename)
+        groups = self.__xml.getElementsByTagName("g")
+        def labelOf(g):
+            return (g.getAttributeNS(inkscapeNS, "label") or
+                    g.getAttribute("id"))
+        def isLayer(g):
+            return g.getAttributeNS(inkscapeNS, "groupmode") == "layer"
+        self.__layers = dict(((labelOf(g), g) for g in groups if isLayer(g)))
+        [f() for f in self.__q]
+        del self.__q
+
+    def layers(self):
+        self.__force()
+        return self.__layers.keys()
+
+    def hideAll(self):
+        if not self.__xml:
+            self.__q.append(lambda: self.hideAll())
+            return
+        self.hide(*self.__layers.keys())
+
+    def hide(self, *layers):
+        if not self.__xml:
+            self.__q.append(lambda: self.hide(*layers))
+            return self
+        for l in layers:
+            self.__layers[l].setAttribute("style", "display:none")
+        return self
+
+    def show(self, *layers):
+        self.__lastLayers = layers
+        if not self.__xml:
+            self.__q.append(lambda: self.show(*layers))
+            return self
+        for l in layers:
+            self.__layers[l].setAttribute("style", "")
+        return self
+
+    def swap(self, *layers):
+        self.hide(*self.__lastLayers)
+        return self.show(*layers)
+
+    def writeToTemp(self):
+        self.__force()
+        path = os.tmpnam() + ".svg"
+        out = file(path,"w")
+        self.__xml.writexml(out)
+        out.close()
+        return path
+
+    def toLayerPDF(self):
+        extra = self.__lastLayers[0]
+        if extra[0] == '_':
+            extra = extra[1:]
+        return self.toPDF(extra)
+
+    def toPDF(self, extra = None, areaDrawing = False):
+        path = os.path.join("overlays", self.__basename)
+        path += "-"
+        if extra:
+            path += extra
+        else:
+            path += str(self.__counter)
+            self.__counter += 1
+        path += ".pdf"
+
+        if os.path.exists(path) and \
+                os.path.getmtime(path) > os.path.getmtime(self.__filename):
+            return
+        svg = self.writeToTemp()
+        print >> sys.stderr, " -> %s" % path
+        args = ["inkscape", "--without-gui"]
+        if areaDrawing:
+            args.append("--export-area-drawing")
+        args.extend(["--export-pdf="+path, svg])
+        status = os.spawnlp(os.P_WAIT, "inkscape", *args)
+        if status != 0:
+            raise RuntimeError, "inkscape failed: %d" % status
+        return path
+
+    def __transform(self, x, y, ms):
+        m = re.match("matrix\\((.*)\\)$", ms)
+        if m:
+            mat = map(float, m.group(1).split(","))
+        else:
+            m = re.match("translate\\((.*)\\)$", ms)
+            if m:
+                mat = [1,0,0,1] + map(float, m.group(1).split(","))
+        assert len(mat) == 6
+        return ((x*mat[0] + y*mat[1] + mat[4]),
+                (x*mat[2] + y*mat[3] + mat[5]))
+
+    def __pxToTeX(self, x, y):
+        return "%gpt" % (x/1.25), "%gpt" % (-y/1.25)
+
+    def getCenters(self, layer):
+        self.__force()
+        print "\\def\\bind%s#1{" % self.__basename
+        print "  \\path (#1.north west)"
+        for n in self.__layers[layer].getElementsByTagName("path"):
+            if n.getAttributeNS(sodipodiNS, "type") == "arc":
+                name = n.getAttribute("id")
+                cx = float(n.getAttributeNS(sodipodiNS, "cx"))
+                cy = float(n.getAttributeNS(sodipodiNS, "cy"))
+                t = n.getAttribute("transform")
+                if t:
+                    cx, cy = self.__transform(cx, cy, t)
+                cx, cy = self.__pxToTeX(cx, cy)
+                print "    +(%s,%s) coordinate (#1-%s)" % (cx, cy, name)
+        print "  ;"
+        print "}"
+
+    def getCurves(self, layer):
+        self.__force()
+        for n in self.__layers[layer].getElementsByTagName("path"):
+            print "\\def\\%s%s#1{" % (self.__basename, n.getAttribute("id"))
+            t = n.getAttribute("transform")
+            d = n.getAttribute("d").split(" ")
+            while d:
+                cmd = d.pop(0)
+                if cmd in "ML":
+                    coords = d.pop(0)
+                    cx, cy = map(float, coords.split(","))
+                    if t:
+                        cx, cy = self.__transform(cx, cy, t)
+                    if cmd == "M":
+                        out = ""
+                    elif cmd == "L":
+                        out = "-- "
+                    out += "($(#1.north west)+(%s,%s)$)" % self.__pxToTeX(cx,cy)
+                elif cmd in "z":
+                    # XXX Guessing
+                    out = "-- cycle"
+                else:
+                    raise RuntimeError("Unknown path command %d" % cmd)
+                print "  " + out
+            print "}"
+
+    def allLayersToPDF(self):
+        self.hideAll()
+        self.show()
+        for l in self.layers():
+            if l[0] == '_': continue
+            self.swap(l).toLayerPDF()
+
+ID = InkscapeDoc
+
+d = ID("figures/vmfs.svg")
+d.getCenters("_coords")
+d.allLayersToPDF()
+
+d = ID("figures/stages.svg")
+d.toPDF("base")
+
+d = ID("figures/flow.svg")
+d.hideAll()
+d.toPDF("base")
+#d.show("wmona", "ldupa", "xdupa")
+#d.toPDF("stages", areaDrawing=True)
+#d.hideAll()
+d.getCenters("_coords")
+d.getCurves("_arrows")
+d.allLayersToPDF()
+
+d = ID("figures/layers.svg")
+d.hideAll()
+d.getCenters("_coords")
+d.allLayersToPDF()
+
+d = ID("figures/writemon.svg")
+d.hide("vmwrites","todisk","fs3dedup","log","record")
+d.show("base").toLayerPDF()
+d.swap("vmwrites").toLayerPDF()
+d.swap("todisk").toLayerPDF()
+d.swap("fs3dedup").toLayerPDF()
+d.swap("log").toLayerPDF()
+d.swap("record").toLayerPDF()
+
+d = ID("figures/decentralized.svg")
+d.toPDF("base")
+
+d = ID("figures/stages-cropped.svg")
+d.toPDF("base")

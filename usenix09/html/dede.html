@@ -1,0 +1,1291 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN"
+            "http://www.w3.org/TR/REC-html40/loose.dtd">
+<HTML>
+<HEAD>
+<TITLE>Decentralized&#XA0;Deduplication in SAN&#XA0;Cluster&#XA0;File&#XA0;Systems
+</TITLE>
+
+<META http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<META name="GENERATOR" content="hevea 1.10">
+<STYLE type="text/css">
+.li-itemize{margin:1ex 0ex;}
+.li-enumerate{margin:1ex 0ex;}
+.dd-description{margin:0ex 0ex 1ex 4ex;}
+.dt-description{margin:0ex;}
+.toc{list-style:none;}
+.thefootnotes{text-align:left;margin:0ex;}
+.dt-thefootnotes{margin:0em;}
+.dd-thefootnotes{margin:0em 0em 0em 2em;}
+.footnoterule{margin:1em auto 1em 0px;width:50%;}
+.caption{padding-left:2ex; padding-right:2ex; margin-left:auto; margin-right:auto}
+.title{margin:2ex auto;text-align:center}
+.center{text-align:center;margin-left:auto;margin-right:auto;}
+.flushleft{text-align:left;margin-left:0ex;margin-right:auto;}
+.flushright{text-align:right;margin-left:auto;margin-right:0ex;}
+DIV TABLE{margin-left:inherit;margin-right:inherit;}
+PRE{text-align:left;margin-left:0ex;margin-right:auto;}
+BLOCKQUOTE{margin-left:4ex;margin-right:4ex;text-align:left;}
+TD P{margin:0px;}
+.boxed{border:1px solid black}
+.textboxed{border:1px solid black}
+.vbar{border:none;width:2px;background-color:black;}
+.hbar{border:none;height:2px;width:100%;background-color:black;}
+.hfill{border:none;height:1px;width:200%;background-color:black;}
+.vdisplay{border-collapse:separate;border-spacing:2px;width:auto; empty-cells:show; border:2px solid red;}
+.vdcell{white-space:nowrap;padding:0px;width:auto; border:2px solid green;}
+.display{border-collapse:separate;border-spacing:2px;width:auto; border:none;}
+.dcell{white-space:nowrap;padding:0px;width:auto; border:none;}
+.dcenter{margin:0ex auto;}
+.vdcenter{border:solid #FF8000 2px; margin:0ex auto;}
+.minipage{text-align:left; margin-left:0em; margin-right:auto;}
+.marginpar{border:solid thin black; width:20%; text-align:left;}
+.marginparleft{float:left; margin-left:0ex; margin-right:1ex;}
+.marginparright{float:right; margin-left:1ex; margin-right:0ex;}
+.theorem{text-align:left;margin:1ex auto 1ex 0ex;}
+.part{margin:2ex auto;text-align:center}
+</STYLE>
+</HEAD>
+<BODY >
+<!--HEVEA command line is: /usr/bin/hevea -fix -I hevea hacks.hva -e util-macros.tex -e paper.aux -o html/dede.html paper.tex -->
+<!--CUT DEF section 1 --><TABLE CLASS="title"><TR><TD><DIV CLASS="center">
+<FONT SIZE=5><B>Decentralized&#XA0;Deduplication in SAN&#XA0;Cluster&#XA0;File&#XA0;Systems</B></FONT><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD ALIGN=center NOWRAP><FONT SIZE=4><I>
+</I></FONT><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD ALIGN=center NOWRAP><FONT SIZE=4><I> </I></FONT><FONT SIZE=4>Austin T. Clements</FONT><SUP><FONT SIZE=4><I>*</I></FONT></SUP><FONT SIZE=4><I> &#XA0;&#XA0;</I></FONT><FONT SIZE=4>Irfan Ahmad</FONT><FONT SIZE=4><I> &#XA0;&#XA0;</I></FONT><FONT SIZE=4>Murali Vilayannur</FONT><FONT SIZE=4><I> &#XA0;&#XA0;</I></FONT><FONT SIZE=4>Jinyuan Li</FONT><FONT SIZE=4><I></I></FONT></TD></TR>
+</TABLE><FONT SIZE=4><I></I></FONT></TD></TR>
+<TR><TD ALIGN=center NOWRAP><FONT SIZE=4><I> VMware, Inc. </I></FONT><FONT SIZE=4><I>&#XA0;</I></FONT><FONT SIZE=4><I> </I></FONT><SUP><FONT SIZE=4><I>*</I></FONT></SUP><FONT SIZE=4><I>MIT CSAIL</I></FONT></TD></TR>
+</TABLE></DIV>
+</TD></TR>
+</TABLE><DIV CLASS="center"><FONT SIZE=4><B>Abstract</B></FONT></DIV><BLOCKQUOTE CLASS="abstract">
+<P>File systems hosting virtual machines typically contain many
+duplicated blocks of data resulting in wasted storage space and
+increased storage array cache footprint. <EM>Deduplication</EM>
+addresses these problems by
+storing a single instance of each unique data block and sharing it
+between all original sources of that data. While deduplication is
+well understood for file systems with a centralized component, we
+investigate it in a
+decentralized cluster file system, specifically in the context of
+VM storage.</P><P>We propose <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>, a block-level deduplication
+system for live cluster file systems that does not require any central
+coordination, tolerates host
+failures, and takes advantage of the block layout policies of an
+existing cluster file system.
+In <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>, hosts keep summaries of their own writes to the cluster file
+system in shared on-disk logs. Each host periodically and
+independently processes the summaries of its locked files, merges them
+with a shared index of blocks, and reclaims any duplicate blocks.
+<SPAN STYLE="font-variant:small-caps">DeDe</SPAN> manipulates metadata using general file system
+interfaces without knowledge of the file system implementation.
+We present the design, implementation, and evaluation of our techniques
+in the context of VMware ESX Server. Our results show an 80%
+reduction in space with minor performance overhead for realistic
+workloads.
+
+</P></BLOCKQUOTE><!--TOC section Introduction-->
+<H2 CLASS="section"><!--SEC ANCHOR --><A NAME="htoc1">1</A>&#XA0;&#XA0;Introduction</H2><!--SEC END --><P>Deployments of consolidated storage using Storage Area Networks (SANs)
+are increasing, motivated by universal access to data from
+anywhere, ease of backup, flexibility in provisioning, and centralized
+administration. SAN arrays already form the backbone of modern data
+centers by providing consolidated data access for multiple hosts
+simultaneously. This trend is further fueled by the proliferation of
+virtualization technologies, which rely on shared storage to support
+features such as live migration of virtual machines (VMs) across hosts.</P><P>SANs provide multiple hosts with direct SCSI access to shared
+storage volumes. Regular file systems assume exclusive
+access to the disk and would quickly
+corrupt a shared disk. To tackle this, numerous shared disk cluster
+file systems have been developed, including VMware
+VMFS&#XA0;[<A HREF="#vmfsdatasheet">21</A>], RedHat GFS&#XA0;[<A HREF="#preslan99gfs">15</A>], and IBM
+GPFS&#XA0;[<A HREF="#schmuck02gpfs">18</A>], which use distributed locking to coordinate
+concurrent access
+between multiple hosts.</P><P>Cluster file systems play an important role in virtualized data
+centers, where multiple physical hosts each run potentially hundreds
+of virtual machines whose virtual disks are stored as regular
+files in the shared file system. SANs provide hosts access to shared storage
+for VM disks with near native SCSI performance while also enabling
+advanced features like live migration, load balancing, and failover of
+VMs across hosts.</P><P>These shared file systems represent an excellent opportunity for
+detecting and coalescing duplicate data. Since they store data from
+multiple hosts, not only do they contain more data, but data
+redundancy is also more likely. Shared storage for VMs is a
+ripe application for deduplication because common system
+and application files are repeated across VM disk images and hosts can
+automatically and transparently share data between and within VMs.
+This is especially true of virtual desktop infrastructures
+(VDI)&#XA0;[<A HREF="#vdi-doc">24</A>], where desktop machines are virtualized,
+consolidated into data centers, and accessed via thin clients. Our
+experiments show that a real enterprise VDI deployment can expend as much as
+80% of its overall storage footprint on duplicate data from VM disk
+images. Given the desire to lower costs, such waste provides
+motivation to reduce the storage needs of virtual machines both in
+general and for VDI in particular.</P><P>Existing deduplication techniques&#XA0;[<A HREF="#bolosky00sis">1</A>, <A HREF="#douceur02farsitededup">3</A>, <A HREF="#hydrastor-fast09">4</A>, <A HREF="#centeradatasheet">5</A>, <A HREF="#hong04sandedup">8</A>, <A HREF="#netapp-asis-website">14</A>, <A HREF="#quinlan02venti">16</A>, <A HREF="#rhea-foundation">17</A>, <A HREF="#zhu08datadomain">26</A>]
+
+rely on centralized file systems, require cross-host communication for
+critical file system operations, perform
+deduplication in-band, or use content-addressable storage.
+All of these approaches have limitations in our domain.
+Centralized techniques would be difficult to extend to a setting with
+no centralized component other than the disk itself. Existing
+decentralized techniques require cross-host communication for most
+operations, often including reads. Performing
+deduplication in-band with writes to a live file system can degrade
+overall system bandwidth and increase IO latency. Finally,
+content-addressable storage, where
+data is addressed by its content hash, also suffers from performance
+issues related to expensive metadata lookups as well as loss of
+spatial locality&#XA0;[<A HREF="#cas-experiences">10</A>].</P><P>Our work addresses deduplication in the decentralized setting of
+VMware&#X2019;s VMFS cluster file system. Unlike existing solutions, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> coordinates a cluster of hosts to cooperatively perform block-level
+deduplication of the live, shared file system. It takes advantage of
+the shared disk as the only centralized point in the system and does not
+require cross-host communication for regular file system operations,
+retaining the direct-access advantage of SAN file systems. As a
+result, the only failure that can stop deduplication is a failure of
+the SAN itself, without which there is no file system to deduplicate.
+Because <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> is an online system for primary storage, all
+deduplication is best-effort and performed as a background process,
+out-of-band from writes, in order to minimize impact on system
+performance. Finally, unlike other systems, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> builds block-level
+deduplication atop an existing file system and takes advantage of
+regular file system abstractions, layout policy, and block addressing.
+As a result, deduplication introduces no additional metadata IO when
+reading blocks and permits in-place writes to blocks that have no
+duplicates.</P><P>This paper presents the design of <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>. We have implemented a
+functional prototype of <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> for VMware ESX Server&#XA0;[<A HREF="#esx-doc">23</A>]
+atop VMware VMFS. Using a variety of synthetic and realistic
+workloads, including data from an active corporate VDI installation,
+we demonstrate that <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> can reduce VM storage requirements by
+upwards of 80% at a modest performance overhead.
+</P><P>Section&#XA0;<A HREF="#sec:overview">2</A> provides an overview of the architecture of our
+system and our goals. Section&#XA0;<A HREF="#sec:design">3</A> details the system&#X2019;s
+design and implementation.
+We provide a quantitative evaluation of our system
+in Section&#XA0;<A HREF="#sec:evaluation">4</A>, followed by a discussion of related
+work in Section&#XA0;<A HREF="#sec:related">5</A>. Finally,
+we conclude in Section&#XA0;<A HREF="#sec:conclusion">6</A>.</P><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<DIV CLASS="center">
+<IMG SRC="dede001.png">
+</DIV>
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 1: Cluster configuration in which multiple hosts
+concurrently access the same storage volume. Each host runs the
+VMFS file system driver (<TT>vmfs3</TT>), the deduplication
+driver (<TT>dedup</TT>), and other
+processes such as VMs.</TD></TR>
+</TABLE></DIV>
+<A NAME="fig:vmfs-sysmodel"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></BLOCKQUOTE><!--TOC section System Overview-->
+<H2 CLASS="section"><!--SEC ANCHOR --><A NAME="htoc2">2</A>&#XA0;&#XA0;System Overview</H2><!--SEC END --><P>
+<A NAME="sec:overview"></A>
+<A NAME="sec:idea:out-of-band"></A></P><P><SPAN STYLE="font-variant:small-caps">DeDe</SPAN> operates in a cluster setting, as shown in
+Figure&#XA0;<A HREF="#fig:vmfs-sysmodel">1</A>, in which multiple hosts are directly
+connected to a single, shared SCSI volume and use a file system designed
+to permit symmetric and cooperative access to the data stored on the
+shared disk. <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> itself runs on each host as a layer on top of the
+file system, taking advantage of file system block layout policies and
+native support for copy-on-write (COW) blocks. In this section, we
+provide a brief overview of our approach to deduplication and the file
+system support it depends on.</P><P><SPAN STYLE="font-variant:small-caps">DeDe</SPAN> uses content hashes to identify potential duplicates,
+the same basic premise shared by all deduplication systems. An index
+stored on the shared file system and designed for concurrent access
+permits efficient duplicate detection by tracking all known blocks in
+the file system by their content hashes.</P><P>In order to minimize impact on critical file system operations such as
+reading and writing to files, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> updates this index <EM>out of
+band</EM>, buffering updates and applying them in large, periodic
+batches. As part of this process, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> detects and eliminates
+duplicates introduced since the last index update. This can be
+done as an infrequent, low priority
+background task or even scheduled during times of low
+activity. Unlike approaches to deduplication such as
+content-addressable storage that integrate content indexes directly
+into the file system storage management, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s index serves solely to
+identify duplicate blocks and plays no role in general file system
+operations.</P><P><SPAN STYLE="font-variant:small-caps">DeDe</SPAN> divides this index update process between hosts. Each host
+monitors its own changes to files in the cluster file system and
+stores summaries of recent modifications in on-disk <EM>write logs</EM>.
+These logs include content hashes computed in-band, as blocks are
+written to disk. Each host periodically consumes the write logs of files
+it has (or can gain) exclusive access to and updates the shared index
+ to reflect these recorded modifications. In
+the process, it discovers and reclaims any block whose content is
+identical to the content of some previously indexed block. Having
+each host participate in the index update process allows the hosts to
+divide and distribute the burden of deduplication, while sharing the
+index allows hosts to detect duplicates even if they are introduced by
+separate hosts. </P><P>Out-of-band index updates mean <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> must be resilient to stale index
+entries that do not reflect the latest content of recently updated
+blocks. Indeed, this is essentially unavoidable in a decentralized
+setting because of communication delays alone. While this means <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> generally must verify block contents when updating the index, this
+resilience has an important implication: <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s correctness does not
+depend on its ability to monitor every write to the file system. This
+has important performance benefits. First, updates to write logs do
+not have to be crash-consistent with updates to file contents, which
+both simplifies fault tolerance and allows hosts to buffer updates to
+write logs to minimize additional IO. Second, this allows users to
+trade off the CPU and memory overhead of write
+monitoring for peak file system performance on a per-file basis. For
+example, a user could simply disable deduplication for VMs that are
+performance-critical or unlikely to contain much duplicate data.
+Finally, this allows the write monitor to shed work if the system is
+overloaded.</P><P>Because <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> operates on a live file system, it specifically
+optimizes for <EM>unique</EM> blocks (blocks with no known duplicates).
+Unlike <EM>shared</EM> blocks, these blocks remain mutable after
+deduplication. The mutability of unique blocks combined with <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s
+resilience to stale index information means these blocks can be
+updated in place without the need to allocate space for a copy or to
+synchronously update the index. As a result, deduplication has no
+impact on the performance of writing to unique blocks, a highly
+desirable property
+because these are precisely the blocks that do not benefit from
+deduplication.</P><P>Similar to some other deduplication work related to virtual
+disks&#XA0;[<A HREF="#cas-experiences">10</A>, <A HREF="#nath08hpccas">13</A>], <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> uses fixed-size
+blocks. Unlike stream-oriented workloads such as backup, where
+variable-sized chunks typically achieve better
+deduplication&#XA0;[<A HREF="#zhu08datadomain">26</A>], our input data is expected to be
+block-structured because guest file systems (<I>e.g.</I>, ext3, NTFS)
+typically divide the disk into fixed-size 4&#XA0;KB or 8&#XA0;KB blocks
+themselves. Consistent with this expectation, earlier
+work&#XA0;[<A HREF="#nath06vmcas">12</A>] and our own test results (see
+Section&#XA0;<A HREF="#sec:vmware-vdi-analysis">4.1</A>), we use a block size of 4&#XA0;KB.</P><!--TOC subsection Required File System Abstractions-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc3">2.1</A>&#XA0;&#XA0;Required File System Abstractions</H3><!--SEC END --><P>
+<A NAME="sec:idea:compare-and-share"></A></P><P>Most approaches to deduplication unify duplicate elimination and
+storage management, supplanting the file system entirely. <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>, in
+contrast, runs as a layer on top of VMFS, an existing file system.
+This layer finds potentially identical blocks and identifies them to
+the file system, which is then responsible for merging these blocks
+into shared, copy-on-write blocks.</P><P>
+<SPAN STYLE="font-variant:small-caps">DeDe</SPAN> requires the file system to be block oriented and to support
+file-level locking. The file
+system block size must also align with the deduplication block size, a
+requirement VMFS&#X2019;s default 1&#XA0;MB block size, unfortunately, does not
+satisfy. Our only non-trivial change to VMFS was to add support for
+typical file system block sizes (<I>i.e.</I>, 4&#XA0;KB), as detailed later in
+Section&#XA0;<A HREF="#sec:vmfs">2.2</A>.</P><P>Finally, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> requires block-level copy-on-write support, a well
+understood, but nevertheless uncommon feature supported by VMFS.
+Specifically, it requires an unusual <EM>compare-and-share</EM> operation,
+which replaces two blocks with one copy-on-write block after verifying
+that the blocks are, in fact, identical (using either bit-wise
+comparison or a content hash witness). Despite the specificity of
+this operation, it fits naturally into the structure of block-level
+copy-on-write and was easy to add to the VMFS interface. <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> manipulates file system blocks solely through this interface and has
+no knowledge of the underlying file system representation.</P><P>There are two noteworthy capabilities that <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> does <EM>not</EM>
+require of the file system. First, hosts running <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> never modify
+the metadata of files they do not have exclusive locks on, as doing so
+would require cross-host synchronization and would complicate per-host
+metadata caching. As a result, a host that discovers a duplicate block
+between two files cannot simply modify both files to point to the
+same block if one of the files is locked by another host. Instead,
+when <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> detects a duplicate between files locked by different
+hosts, it uses a third file containing a <EM>merge request</EM> as an
+intermediary. One host creates a merge request containing a COW
+reference to the deduplicated block, then passes ownership of the
+merge request file&#X2019;s lock to the other host, which in turn replaces
+the block in its file with a reference to the block carried by the
+merge request.</P><P>Second, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> does <EM>not</EM> require the file system to expose a
+representation of block addresses. Much like any regular application,
+it only refers to blocks indirectly, by their offset in some
+locked file, which the file system can resolve into a block
+address. This restricts the design of our index, since it cannot
+simply refer to indexed blocks directly. However, this limitation
+simplifies our overall design, since requiring the file system to expose block
+addresses outside the file system&#X2019;s own data structures would
+interfere with its ability to free and migrate blocks and could result
+in dangling pointers. Worse, any operations introduced to manipulate
+blocks directly would conflict with file-level locking and host
+metadata caching.</P><P>In lieu of referring to blocks by block addresses, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> introduces a
+<EM>virtual arena</EM> file. This is a regular file in the file system,
+but it consists solely of COW references to shared blocks that are
+present in at least one other file. This file acts as an alternate
+view of all shared blocks in the system: <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> identifies shared
+blocks simply by their offsets in the virtual arena file, which the
+file system can internally resolve to block addresses using regular
+address resolution.</P><P>Because <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> builds on the underlying file system, it inherits the
+file system&#X2019;s block placement policy and heuristics. If the
+underlying file system
+keeps file blocks sequential, blocks will generally remain sequential
+after deduplication. Shared blocks are likely to be sequential with
+respect to other blocks in at least one file, and common sequences of
+shared blocks are likely to remain sequential with respect to each
+other. Furthermore, the placement and thus sequentiality of unique
+blocks is completely unaffected by the deduplication process; as a
+result,
+deduplication does not affect IO performance to individual unique
+blocks because they do not require copying, and it maintains
+sequential IO performance across spans of unique blocks.</P><!--TOC subsection VMFS-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc4">2.2</A>&#XA0;&#XA0;VMFS</H3><!--SEC END --><P>
+<A NAME="sec:vmfs"></A></P><P>Many of the design decisions in <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> were influenced by the design of
+its substrate file system, VMFS. VMFS is a coordinator-less cluster
+file system&#XA0;[<A HREF="#vmfsdatasheet">21</A>] designed to allow hosts to
+cooperatively maintain a file system stored on a shared disk. In this
+section, we provide a quick overview of how VMFS addresses and
+manages concurrent access to its resources in order to provide better
+context for the design of <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>.</P><P>VMFS organizes the shared disk into four different resource pools:
+inodes, pointer blocks, file blocks, and sub-blocks. Inodes and
+pointer blocks play much the same role as in traditional UNIX file
+systems, storing per-file metadata and pointers to the blocks
+containing actual file content. File blocks and sub-blocks both store
+file content, but are different sizes, as discussed below. The
+divisions between these pools are currently fixed at format time and
+can only be expanded by adding more storage, though this is not a
+fundamental limitation. In each pool,
+resources are grouped into <EM>clusters</EM>. The header for each cluster
+maintains metadata about all of its contained resources; most
+importantly, this includes a reference count for each
+individual resource and tracks which resources are free and which are
+allocated.</P><P>In order to support concurrent access by multiple hosts to file and
+resource data, VMFS uses a distributed lock manager.
+Unlike most cluster file systems, which use an
+IP network for synchronization, VMFS synchronizes all file system
+accesses entirely through the shared disk itself using on-disk locks.
+VMFS ensures atomic access to on-disk lock structures themselves using
+SCSI-2-based LUN reservations to guard read-modify-write critical
+sections. In addition to taking advantage of the reliability of
+storage area networks, using the same means to access both file system
+state
+and synchronization state prevents &#X201C;split brain&#X201D; problems typical of
+IP-based lock managers in which multiple hosts can access the file
+system state but cannot communicate locking decisions with each other.</P><P>VMFS protects file data from concurrent access by associating a
+coarse-grain lock with each file that covers all of a file&#X2019;s metadata
+(its inode and pointer blocks) as well as all of the file blocks and
+sub-blocks comprising the file&#X2019;s content. Files in VMFS tend to be
+locked for long durations (<I>e.g.</I>, a VM&#X2019;s disk files are locked as long
+as the VM is powered on). <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> respects file system locking by
+partitioning the deduplication process according to which hosts hold
+which file locks.
+</P><P>VMFS protects resource metadata using per-cluster locks. Thus,
+allocation and deallocation of resources must lock all clusters
+containing any of the resources involved. The number of resources
+packed per cluster reflects a trade-off between locking overhead and
+cross-host cluster lock contention. Higher cluster density allows
+hosts to manipulate more resources with fewer locks, but at the cost of
+increased lock contention. Since <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> stresses the sub-block resource pool
+more than typical VMFS usage, we increase the sub-block cluster
+density from 16 to 128 resources per cluster, but otherwise use the
+default VMFS densities.</P><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<DIV CLASS="center">
+<IMG SRC="dede002.png">
+</DIV>
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 2: Mixed block sizes allow any 1&#XA0;MB file block to be divided into
+256 separate 4&#XA0;KB sub-blocks.</TD></TR>
+</TABLE></DIV>
+<A NAME="fig:mixed-block-sizes"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></BLOCKQUOTE><P>VMFS maintains two separate resource types for storing file content:
+file blocks and sub-blocks. File sizes in VMFS typically fit a
+bimodal distribution. Virtual machine disks and swap files are
+usually several gigabytes, while configuration and log files tend to
+be a few kilobytes. Because of this, VMFS uses 1&#XA0;MB file blocks to
+reduce metadata overhead and external fragmentation for large files,
+while for small files, VMFS uses smaller
+sub-blocks to minimize internal fragmentation.
+<SPAN STYLE="font-variant:small-caps">DeDe</SPAN> must be able to address individual 4&#XA0;KB blocks in order to COW
+share them, so we configure VMFS with 4&#XA0;KB sub-blocks.
+Furthermore, rather than simply eschewing the efficiency of 1&#XA0;MB blocks
+and storing all file content in 4&#XA0;KB blocks, we extend VMFS to
+support <EM>mixed block sizes</EM>, depicted in
+Figure&#XA0;<A HREF="#fig:mixed-block-sizes">2</A>, so that <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> can address
+individual
+4&#XA0;KB blocks of a file when it needs to share a duplicate block, but
+when possible still store unique regions of files in efficient 1&#XA0;MB
+blocks. This change introduces an optional additional pointer block
+level and allows any file block-sized region to be broken into 256 
+separate 4&#XA0;KB blocks, which, in turn, add up to the original file
+block. This can be done
+dynamically to any 1&#XA0;MB block based on deduplication decisions,
+and leaves address resolution for other data intact and efficient.</P><P>Beyond these unusual block sizes, VMFS supports a number of other
+uncommon features. Most important to <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> is support for block-level
+copy-on-write (COW). Each file or sub-block resource can be
+referenced from multiple pointer blocks, allowing the same data to be
+shared between multiple places in multiple files. Each reference to a
+shared resource is marked with a COW bit, indicating that any attempts
+to write to the resource must make a private copy in a freshly
+allocated resource and write to that copy instead. Notably, this COW
+bit is associated with each <EM>pointer</EM> to the resource, not with the
+resource itself. Otherwise, every write operation would need to take
+a cluster lock to check the COW bit of the destination block, even if
+the block was not COW. However, as a result, sharing a block between
+two files requires file locks on <EM>both</EM> files, even though only
+one of the references will change. Thus, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> must use merge
+requests for all cross-host merging operations.</P><P>VMFS forms the underlying substrate of <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> and handles critical
+correctness requirements such as specializing COW blocks and
+verifying potential duplicates, allowing <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> to focus on
+duplicate detection. Virtual arenas and merge requests
+allow <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> to achieve complex, decentralized manipulations of the
+file system structure without knowledge of the file system
+representation, instead using only a few general-purpose interfaces.</P><!--TOC section Design and Implementation-->
+<H2 CLASS="section"><!--SEC ANCHOR --><A NAME="htoc5">3</A>&#XA0;&#XA0;Design and Implementation</H2><!--SEC END --><P>
+<A NAME="sec:design"></A></P><P>In this section, we provide details of the design and implementation
+of <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s best-effort write
+monitoring subsystem and the out-of-band indexing and duplicate
+elimination process.</P><!--TOC subsection Write Monitoring-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc6">3.1</A>&#XA0;&#XA0;Write Monitoring</H3><!--SEC END --><P>
+<A NAME="sec:idea:stale-wlog"></A></P><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<DIV CLASS="center">
+<IMG SRC="dede003.png">
+</DIV>
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 3: Only a lightweight kernel module lies
+in the IO critical path, opportunistically calculating hashes of
+blocks while they are still in memory. A userspace daemon (<TT>dedupd</TT>) flushes write logs to disk periodically. Duplicate
+detection and elimination occur out of band.</TD></TR>
+</TABLE></DIV>
+<A NAME="fig:write-monitoring"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></BLOCKQUOTE><P>Each host runs a <EM>write monitor</EM>, as shown in
+Figure&#XA0;<A HREF="#fig:write-monitoring">3</A>, which consists of a lightweight
+kernel module (<TT>dedup</TT>) that monitors all writes by that host
+to files in the file system and a userspace daemon (<TT>dedupd</TT>) that
+records this information to logs stored in the shared file system.
+The write monitor is the only part of the system that lies in the
+IO critical path of the file system, so the write monitor itself must
+incur as little additional disk IO and CPU overhead as possible.</P><P>The kernel module provides the userspace daemon with a modification
+stream indicating, for each write done by the host: the file modified,
+the offset of the write, and the SHA-1 hashes of all modified
+blocks. While the in-band CPU overhead of the monitor could have been
+virtually eliminated by computing these hashes lazily (<I>e.g.</I>, at
+indexing time), this would have required reading the modified blocks
+back from disk, resulting in a large amount of additional random IO.
+We opted instead to eliminate the extra IO by computing these hashes
+while the blocks were in memory, though the trade-off between run-time
+CPU overhead and deduplication-time IO overhead could be set
+dynamically by user-defined policy.</P><P>The userspace daemon divides the modification stream by file,
+aggregates repeated writes to the same block, and buffers this
+information in memory, periodically flushing it to individual write
+log files associated with each regular file. These write logs are
+stored on the shared file system itself, so even if
+a host fails or transfers ownership of a file&#X2019;s lock, any other host
+in the system is capable of reading logs produced by that host and
+merging information about modified blocks into the index.</P><P>The daemon can safely buffer the modification stream in memory because
+the index update process is designed to deal with stale
+information. Without this, write logs would have to be consistent
+with on-disk file state, and each logical write to the file system
+would result in at least
+two writes to the disk. Instead, buffering allows our system to
+absorb writes to over 150&#XA0;MB of file blocks into a single infrequent
+1&#XA0;MB sequential write to a log file. This is the only additional IO
+introduced by the write monitor.
+</P><P>Similarly, we rely on the best-effort property of write monitoring to
+minimize IO in the case of partial block writes. If a write
+to the file system does not cover an entire block, the monitor simply
+ignores that write, rather than reading the remainder of the block
+from disk simply to compute its hash. In practice, this is rarely a
+problem when writes originate from a virtual machine, because guest
+operating systems typically write whole guest file system blocks,
+which are generally at least 4&#XA0;KB.<SUP><A NAME="text1" HREF="#note1">1</A></SUP>
+</P><P>Write monitoring can be enabled or disabled per file.
+If the performance of some VM is too critical to incur the
+overhead of write monitoring or if the system administrator has
+a priori knowledge that a VM&#X2019;s duplication ratio is small, such VMs
+can be opted out of deduplication.</P><!--TOC subsection The Index-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc7">3.2</A>&#XA0;&#XA0;The Index</H3><!--SEC END --><P>The shared on-disk index tracks all known blocks in the file system by
+their content hashes. As discussed in
+Section&#XA0;<A HREF="#sec:idea:out-of-band">2</A>, each host updates this index
+independently, incorporating information about recent block
+modifications from the write logs in large batches on a schedule set
+by user-defined policy (<I>e.g.</I>, only during off-peak hours). A match
+between a content hash in the index and that of a recently modified
+block indicates a potential duplicate that must be verified and
+replaced with a copy-on-write reference to the shared block.</P><P>The index acts as an efficient map from hashes to block locations.
+Because <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> treats unique blocks (those with only a single
+reference) differently from shared blocks (those with multiple
+references), each index entry can likewise be in one of two states,
+denoted Unique(<I>H</I>,<I>f</I>,<I>o</I>) and Shared(<I>H</I>,<I>a</I>). An index
+entry identifies a unique block with hash <I>H</I> by the inumber <I>f</I> of
+its containing file and its offset <I>o</I> within that file. Because
+index updates are out-of-band and unique blocks are mutable, these
+entries are only <EM>hints</EM> about a block&#X2019;s hash. Thus, because a mutable
+block&#X2019;s contents may have changed since it was last indexed, its
+contents must be verified prior to deduplicating it with another
+block. Shared blocks, on the other hand, are marked COW and thus
+their content is guaranteed to be stable. The index identifies each
+shared block by its offset <I>a</I> in the index&#X2019;s <EM>virtual arena</EM>,
+discussed in the next section.</P><!--TOC subsubsection Virtual Arena-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc8">3.2.1</A>&#XA0;&#XA0;Virtual Arena</H4><!--SEC END --><P>When duplicate content is found, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> reclaims all but one of the duplicates
+and shares that block copy-on-write between files. Because hosts can
+make per-file, mutable copies of shared blocks at any time without
+updating the index, we cannot simply identify shared blocks by their
+locations in deduplicated files, like we could for unique blocks. The
+index needs a way to refer to these shared blocks that is stable
+despite shifting references from deduplicated files. As
+discussed earlier, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> cannot simply store raw block addresses in the
+index because exposing these from the file system presents numerous
+problems. Instead, we introduce a virtual arena file as an
+additional layer of indirection that provides stable identifiers for
+shared blocks without violating file system abstractions.</P><P>The virtual arena is a regular file, but unlike typical files, it
+doesn&#X2019;t have any data blocks allocated specifically for it (hence, it
+is virtual). Rather, it serves as an alternate view of all shared
+blocks in the file
+system. In this way, it is very different from the arenas used in
+other deduplication systems such as Venti&#XA0;[<A HREF="#quinlan02venti">16</A>], which
+store actual data blocks addressed by content addresses.</P><P>In order to make a block shared, a host introduces an additional COW
+reference to that block from the virtual arena file, using the same
+interface that allows blocks to be shared between any two
+files. Apart from uncollected garbage blocks, the virtual arena
+consumes only the space of its inode and any necessary pointer
+blocks. Furthermore, this approach takes advantage of the file
+system&#X2019;s block placement policies: adding a block to the virtual arena
+does <EM>not</EM> move
+it on disk, so it is likely to remain sequential with the original
+file.</P><P>The index can then refer to any shared block by its <EM>offset</EM> in
+the virtual arena file, which the file system can internally resolve
+to a block address, just as it would for any other file. The virtual
+arena file&#X2019;s inode and pointer block structure exactly form the
+necessary map from the abstract, stable block identifiers required by
+the index to the block addresses required by the file system.</P><!--TOC subsubsection On-disk Index Representation-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc9">3.2.2</A>&#XA0;&#XA0;On-disk Index Representation</H4><!--SEC END --><P>
+<A NAME="sec:index:representation"></A></P><P><SPAN STYLE="font-variant:small-caps">DeDe</SPAN> stores the index on disk as a packed list of entries,
+sorted by hash. Because <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> always updates the index in large
+batches and since the hashes of updates exhibit no spatial
+locality, our update process simply scans the entire index file
+linearly in tandem with a sorted list of updates, merging the two lists
+to produce a new index file. Despite the simplicity of this
+approach, it outperforms common index structures optimized for
+individual random accesses (<I>e.g.</I>, hash tables and B-trees) even if the
+update batch size is small. Given an average index
+entry size of <I>b</I> bytes, a sequential IO rate of <I>s</I> bytes per second,
+and an average seek time of <I>k</I> seconds, the time required to apply
+<I>U</I> updates using random access is <I>Uk</I>, whereas the time to
+scan and rewrite
+an index of <I>I</I> entries sequentially is <SUP>2<I>Ib</I></SUP>/<SUB><I>s</I></SUB>. If the
+ratio of the batch size to the index size exceeds
+<SUP><I>U</I></SUP>/<SUB><I>I</I></SUB> = <SUP>2<I>b</I></SUP>/<SUB><I>sk</I></SUB>, sequentially rewriting the
+entire index is faster than applying each update individually.
+For example, given an entry size of 23
+bytes and assuming a respectable SAN array capable of 150&#XA0;MB/s and
+8&#XA0;ms seeks, the batch size only needs to exceed 0.004% of the index
+size. Furthermore, hosts defer index updates until the batch size
+exceeds some fixed fraction of the index size (at least 0.004%), so
+the amortized update cost remains
+constant regardless of index size.</P><P>In order to allow access to the index to scale with the number of
+hosts sharing the file system, while still relying on file locking to
+prevent conflicting index access, hosts <I>shard</I> the index into multiple
+files, each representing some subdivision of the hash space. Once the
+time a host takes to update a shard exceeds some threshold, the next
+host to update that shard will split the hash range covered by the
+shard in
+half and write out the two resulting sub-shards in separate files. This
+technique mirrors that of extensible
+hashing&#XA0;[<A HREF="#fagin79extendiblehashing">6</A>], but instead of bounding the
+size of hash buckets, we bound the time required to update them.
+Combined with file locking, this dynamically adjusts the concurrency
+of the index to match demand.</P><!--TOC subsection Indexing and Duplicate Elimination-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc10">3.3</A>&#XA0;&#XA0;Indexing and Duplicate Elimination</H3><!--SEC END --><P>As the index update process incorporates information about recently
+modified blocks recorded in the write logs, in addition to detecting
+hash matches that indicate potential duplicates, it also performs
+the actual COW sharing operations to eliminate these duplicates. The
+duplicate elimination process must be interleaved with the index
+scanning process because the results of block content verification can
+affect the resulting index entries.
+</P><P>In order to update the index, a host sorts the recent write
+records by hash and traverses this sorted list of write records in
+tandem with the sorted entries in the index. A matching hash between
+the two indicates a potential duplicate, which is handled differently
+depending on the state of the matching index entry.
+Figure&#XA0;<A HREF="#fig:index-states">4</A> gives an overview of all possible
+transitions a matching index entry can undergo, given it current
+state.</P><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<A NAME="fig:new-unique"></A>
+<IMG SRC="dede004.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>(a)&#XA0;When the hash <I>H</I> of the block at offset <I>o</I> in file <I>f</I>
+is not in the index, a new unique entry is added.</TD></TR>
+</TABLE></DIV><BR>
+<A NAME="fig:unique-to-shared"></A>
+<IMG SRC="dede005.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>(b)&#XA0;When a second occurrence of hash <I>H</I> is found and the
+block&#X2019;s content passes verification, we place it in the virtual
+arena and upgrade the index entry to shared.</TD></TR>
+</TABLE></DIV><BR>
+<A NAME="fig:shared-to-shared"></A>
+<IMG SRC="dede006.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>(c)&#XA0;When a duplicate of a shared block is found, we
+verify its contents and replace the block with a reference to the
+existing shared block.</TD></TR>
+</TABLE></DIV><BR>
+<A NAME="fig:gc"></A>
+<IMG SRC="dede007.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>(d)&#XA0;Unique entries are garbage collected when the indexing
+process finds a write record to that block with a different hash.
+Shared entries are garbage collected when only the reference from
+the virtual arena remains.</TD></TR>
+</TABLE></DIV><BR>
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 4: All possible updates to an index entry.</TD></TR>
+</TABLE></DIV>
+<A NAME="fig:index-states"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><P>When <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> detects a potential duplicate, it depends on the file
+system&#X2019;s compare-and-share operation, described in
+Section&#XA0;<A HREF="#sec:idea:compare-and-share">2.1</A>, to atomically verify that
+the block&#X2019;s content has not changed and replace it with a COW
+reference to another block. Based on user-specified policy, this
+verification can either be done by reading the contents of the
+potential duplicate block and ensuring that it matches the expected
+hash (<I>i.e.</I>, compare-by-hash), or by reading the contents of <EM>both</EM>
+blocks and performing a bit-wise comparison (<I>i.e.</I>, compare-by-value).
+If the latter policy is in effect, hash collisions reduce <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s
+effectiveness, but do <EM>not</EM> affect its correctness. Furthermore,
+because hashes are used solely for finding potential duplicates, if
+SHA-1 is ever broken, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> has the unique capability of gracefully
+switching to a different hash function by simply rebuilding its index.
+The content verification step can be skipped altogether if a host can
+prove that a block has not changed; for example, if it has held the
+lock on the file containing the block for the entire duration since
+the write record was generated and no write records have been dropped.
+While this is a fairly specific condition, it is often met in <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s
+target setting because locks on VM disks are usually held for very
+long durations.</P><!--TOC subsubsection Single Host Indexing-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc11">3.3.1</A>&#XA0;&#XA0;Single Host Indexing</H4><!--SEC END --><P>We begin with an explanation of the index update process assuming only
+a single host with exclusive access to the file system. In a single
+host design, the host can modify the metadata of any file. We lift
+this assumption in the next section, where we extend the process to
+support multiple hosts.</P><P>Any write record without a corresponding hash in the index indicates a
+new, unique block. Even though this write record may be stale,
+because index entries for unique blocks are only hints, it is
+safe to simply add the new unique block to the index without verifying
+the block&#X2019;s content, performing an <EM>absent-to-unique</EM>
+transition as shown in
+Figure&#XA0;<A HREF="#fig:new-unique">4(a)</A>. This single
+sequential, buffered write to the index is the only IO incurred when
+processing a new unique block.</P><P>When a write record&#X2019;s hash corresponds to an index entry for a
+unique block, then the host attempts to share both blocks (freeing one
+of them in the process) and upgrade the index entry to refer to the
+shared block. This <EM>unique-to-shared</EM> transition is shown in
+Figure&#XA0;<A HREF="#fig:unique-to-shared">4(b)</A>. However,
+because the write record and index entry may both be stale,
+the host must verify the contents of both blocks before actually
+sharing them. Assuming this verification succeeds, the file system
+replaces both blocks with a shared block and the host inserts
+this block into the virtual arena and upgrades the index entry to
+refer to the new, shared block.</P><P>Finally, if a write record&#X2019;s hash matches an index entry for a
+shared block, then the host attempts to eliminate this newly detected
+potential duplicate, performing a <EM>shared-to-shared</EM> transition
+as shown in
+Figure&#XA0;<A HREF="#fig:shared-to-shared">4(c)</A>. Because
+the write record may be stale, it first verifies that the content of
+the potential duplicate has not changed. If this succeeds, then this
+block is freed and the reference to the block is replaced with a
+reference to the shared block found via the virtual arena.</P><!--TOC subsubsection Multi-Host Indexing-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc12">3.3.2</A>&#XA0;&#XA0;Multi-Host Indexing</H4><!--SEC END --><P>Extending the index update process to multiple hosts, we can no longer
+assume that a host will have unfettered access to every file. In
+particular, hosts can only verify blocks and modify block pointers in
+files they hold exclusive locks on. As a result, indexing <EM>must</EM>
+be distributed across hosts. At the same time, we must minimize
+communication between hosts, given the cost of communicating via the
+shared disk. Thus, sharing of blocks is done without
+any blocking communication between hosts, even if the blocks involved
+are in use by different hosts.</P><P>In the multi-host setting, the write logs are divided amongst the
+hosts according to which files each host has (or can gain) exclusive
+access to. While this is necessary because hosts can only process
+write records from files they hold exclusive locks on, it also serves
+to divide the deduplication workload between the hosts.</P><P>Absent-to-unique transitions and shared-to-shared transitions are
+the same in the multi-host setting as in the single host setting.
+Adding a new, unique block to the
+index requires neither block verification, nor modifying block
+pointers. Shared-to-shared transitions only verify and rewrite blocks
+in the file referenced by the current write log, which the host
+processing the write log must have an exclusive lock on.</P><P>Unique-to-shared transitions, however, are complicated by the
+possibility that the file containing the
+unique block referenced by the index may be locked by some host other
+than the host processing the write record. While this host
+may not have access to the indexed block, it does
+have access to the block referred to by the write log. The host
+verifies this
+block&#X2019;s content and promotes it to a shared block by adding it to the
+virtual arena and upgrading the index entry accordingly. However, in
+order to reclaim the originally indexed block, the host must
+communicate this deduplication opportunity to the host holding the
+exclusive lock on the file containing the originally indexed block
+using the associated merge request file. The host updating
+the index posts a merge request for the file containing the originally
+indexed block. This request contains not only
+the offset of the unique block, but also another COW reference to the
+shared block. Hosts periodically check for merge requests to the files
+they have exclusive locks on, verifying any requests they
+find and merging blocks that pass verification. The COW
+reference to the shared block in the merge request allows hosts to
+process requests without accessing the arena.</P><!--TOC subsubsection Garbage Collection-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc13">3.3.3</A>&#XA0;&#XA0;Garbage Collection</H4><!--SEC END --><P>As the host scans the index for hash matches, it also
+garbage collects unused shared blocks and stale index entries, as
+shown in Figure&#XA0;<A HREF="#fig:gc">4(d)</A>. For each 
+shared block in the index, it checks the file system&#X2019;s reference count
+for that block. If the block is no longer in use, it will have only a
+single reference (from the virtual arena), indicating that it can be removed
+from the virtual arena and freed. In effect, this implements a simple form of
+weak references without modifying file system semantics. Furthermore,
+this approach allows the virtual arena to double as a victim cache before
+garbage collection has a chance to remove unused blocks.</P><P>Unique blocks do not need to be freed, but they can leave behind stale
+index entries. Hosts garbage collect these by removing any index entries
+that refer to any block in any of the write records being processed by
+the host. In the presence of dropped write records, this may not remove
+all stale index entries, but it will ensure that there is at most one
+index entry per unique block. In this case, any later write or potential
+duplicate discovery involving a block with a stale index entry will
+remove or replace the stale entry. The garbage collection process
+also check for file truncations and deletions and removes any
+appropriate index entries.</P><!--TOC section Evaluation-->
+<H2 CLASS="section"><!--SEC ANCHOR --><A NAME="htoc14">4</A>&#XA0;&#XA0;Evaluation</H2><!--SEC END --><P>
+<A NAME="sec:evaluation"></A></P><P>In this section, we present results from the evaluation of our
+deduplication techniques using various microbenchmarks and realistic
+workloads. We begin in Section&#XA0;<A HREF="#sec:vmware-vdi-analysis">4.1</A> with
+experiments and analysis that shows the space savings achievable with
+deduplication as well as the space overheads introduced by it, using
+data from a real corporate VDI deployment. We also draw a comparison
+against linked clones, an alternative way of achieving space savings.</P><P>We have implemented a functional prototype of <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> atop VMware
+VMFS. Although we haven&#X2019;t spent any significant time optimizing it, it
+is worthwhile examining its basic performance characteristics. In
+Section&#XA0;<A HREF="#sec:run-time-overheads">4.2</A>, we present the run-time
+performance impact of write monitoring and other changes to the file
+system introduced by deduplication, as well as the run-time
+performance gained from improved cache locality. Finally,
+we look at the performance of the deduplication process itself in
+Section&#XA0;<A HREF="#sec:dedup-rate">4.3</A>.</P><!--TOC subsection Analysis of Virtual Disks in the Wild-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc15">4.1</A>&#XA0;&#XA0;Analysis of Virtual Disks in the Wild</H3><!--SEC END --><P>
+<A NAME="sec:vmware-vdi-analysis"></A></P><P>To evaluate the usefulness of deduplication in our target workload
+segment of VDI, we analyzed the virtual disks from a production
+corporate VDI cluster serving desktop VMs for approximately 400 users
+on top of a farm of 32 VMware ESX hosts. Out of these, we selected
+113 VMs at random to analyze for duplicate blocks, totaling 1.3&#XA0;TB of
+data (excluding blocks consisting entirely of NULL bytes). Each user
+VM belonged exclusively to a single corporate user from a
+non-technical department like marketing or accounting. The VMs
+have been in use for six to twelve months and all
+originated from a small set of standardized Windows&#XA0;XP images. From
+our experience, this is typical for most enterprise IT organizations,
+which limit the variation of operating systems to control management
+and support costs.
+</P><P>Figure&#XA0;<A HREF="#fig:vmware-it-vdi-bar">5</A> shows the reduction in storage
+space for this VDI farm using deduplication block sizes between 4&#XA0;KB
+and 1&#XA0;MB. As expected, VDI VMs have a high degree of similarity,
+resulting in an &#X223C;80% reduction in storage footprint for the 4&#XA0;KB
+block size, which falls off logarithmically to &#X223C;35% for 1&#XA0;MB
+blocks. Deduplication at the 4&#XA0;KB block size reduces the
+original 1.3&#XA0;TB of data to 235&#XA0;GB. Given the significant advantage of
+small block sizes, we chose to use a default 4&#XA0;KB block size
+for <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>. However, a reasonable argument can be made for the smaller
+metadata storage and caching overhead afforded by an 8&#XA0;KB block size.
+We are exploring this as well as dynamic block size selection as
+future work.</P><P>Figure&#XA0;<A HREF="#fig:vmware-it-vdi-cdf">6</A> shows a CDF of the same data,
+detailing the duplication counts of individual blocks in terms of
+the number of references to each block in the file
+system <EM>after</EM> deduplication. For example, at the 4&#XA0;KB block
+size, 94% of deduplicated blocks are referenced 10 or fewer times by
+the file system (equivalently, 6% of deduplicated blocks are
+referenced more than 10 times). Thus, in the original data, most
+blocks were duplicated a small number of times, but there was a very
+long tail where some blocks were duplicated many times. At the very
+peak of the 4&#XA0;KB distribution, some blocks were duplicated over
+100,000 times. Each of these blocks individually represented over
+400&#XA0;MB of space wasted storing duplicate data. Overall, this data
+serves to show the potential for space savings from deduplication in
+VDI environments.</P><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<IMG SRC="dede008.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 5: Duplication available at various block sizes and for
+different variations on the approach. Data is from a
+production VDI deployment of 113 Windows XP VMs.</TD></TR>
+</TABLE></DIV>
+<A NAME="fig:vmware-it-vdi-bar"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<IMG SRC="dede009.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 6: CDF of block duplication counts. A few blocks occur over
+100,000 times. Data is from the same deployment as shown in
+Figure&#XA0;<A HREF="#fig:vmware-it-vdi-bar">5</A>.</TD></TR>
+</TABLE></DIV>
+
+<A NAME="fig:vmware-it-vdi-cdf"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><!--TOC subsubsection Space Overheads-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc16">4.1.1</A>&#XA0;&#XA0;Space Overheads</H4><!--SEC END --><P>While <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> reduces the amount of space required by file data, it
+requires additional space for both the index and the additional
+metadata introduced by mixed block sizes. For our VDI data set, at a
+4&#XA0;KB block size, this additional data totaled 2.7&#XA0;GB, a mere 1.1%
+overhead beyond the deduplicated file data.</P><P>The index represented 1.5&#XA0;GB of this overhead, 194&#XA0;MB of which was
+file system metadata (pointer blocks) for the virtual arena.
+The size of the index scales linearly with the size of
+the deduplicated data because each deduplicated block has one index
+entry. However, its relative overhead does vary with the ratio of
+unique to shared
+blocks, because shared blocks require 4 bytes to locate plus virtual
+arena metadata, while unique blocks require 12 bytes beyond the
+18&#XA0;bytes required on average for each entry&#X2019;s header and hash.
+However, even in the worst case, the index represents only 0.73% 
+overhead.</P><P>Prior to deduplication, file metadata (inodes and pointer blocks)
+represented a mere 0.0004% overhead, owing to the efficiency of
+tracking VMFS&#X2019;s 1&#XA0;MB file blocks. After deduplication, each 1&#XA0;MB
+block that was divided into sub-blocks requires a new pointer block at
+1&#XA0;KB apiece. As a result, metadata overhead increased to 0.49%
+after deduplication, or
+1.1&#XA0;GB of data in total. While this is a dramatic increase, metadata
+is still a very small fraction of the overall space.</P><!--TOC subsubsection Partition Alignment Issues-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc17">4.1.2</A>&#XA0;&#XA0;Partition Alignment Issues</H4><!--SEC END --><P>Our approach of dividing disks into fixed size blocks is sensitive to
+the alignment of data on those disks. Unfortunately, for historical
+reasons, the first partition of partition tables created by utilities
+like <TT>fdisk</TT> on commodity PC systems has a start address
+512&#XA0;bytes short of a 4&#XA0;KB boundary, which can in turn cause all
+logical file system blocks to straddle 4&#XA0;KB disk block boundaries.
+This has well-known negative performance effects&#XA0;[<A HREF="#vmware-align">22</A>],
+particularly for storage array caches, which are forced to fetch two
+blocks for each requested file system block. We were initially
+concerned that this partition misalignment could negatively impact
+deduplication opportunities, so we &#X201C;fixed&#X201D; the alignment of our VDI
+data by shifting all of the virtual disks by 512&#XA0;bytes.
+Figure&#XA0;<A HREF="#fig:vmware-it-vdi-bar">5</A> compares the results of
+deduplication with and without this realignment and shows that, in
+practice, partition alignment actually had very <EM>little</EM> impact
+on achieved deduplication.  While this may still prove to be a problem for
+well-aged guest file systems, if necessary, it can be solved in a
+virtualized environment by padding the virtual disk image file to
+realign the guest file system blocks with the host file system blocks.</P><!--TOC subsubsection Deduplication Versus Linked Clones-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc18">4.1.3</A>&#XA0;&#XA0;Deduplication Versus Linked Clones</H4><!--SEC END --><P>
+<A NAME="sec:vmware-vdi-linked-clones"></A></P><P><EM>Linked clones</EM> are a simpler space saving alternative to
+deduplication where individual user VMs are initially constructed as
+block-level COW snapshots of a golden master VM. This uses the same COW
+mechanism as <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>, but all sharing happens during VM creation and the
+user VM images strictly diverge from the base disk and from each other
+over time.</P><P>In order to compare the efficacy of linked clones versus full
+deduplication, we simulated the structured sharing of linked clones on
+our VDI data set. This comparison was necessarily imperfect because
+we had access to neither the base disks nor ancestry information for
+the VDI VMs, but it did yield a <EM>lower bound</EM> on the total space
+required by linked clones. The analysis used our regular
+deduplication algorithm but restricted it to deduplicating blocks only
+when they were at the same offset in two files, a reasonable
+approximation to user disks that are a minimal delta from the
+base disk (<I>e.g.</I>, no security patches or software updates have been
+installed in the user disks).</P><P>Figure&#XA0;<A HREF="#fig:vmware-it-vdi-bar">5</A> compares the savings achieved by
+linked clones against those achieved by <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>, again at various COW
+block sizes. Linked clones max out at a 44% reduction in space,
+reducing the 1.3&#XA0;TB of original data to 740&#XA0;GB, a storage requirement
+over three times larger than full deduplication achieved.
+</P><!--TOC subsection Run-time Effects of Deduplication-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc19">4.2</A>&#XA0;&#XA0;Run-time Effects of Deduplication</H3><!--SEC END --><P>
+<A NAME="sec:run-time-overheads"></A></P><P><SPAN STYLE="font-variant:small-caps">DeDe</SPAN> operates primarily out of band and engenders no slowdowns for
+accessing blocks that haven&#X2019;t benefited from deduplication. It can
+also improve file system performance in certain workloads by reducing
+the working set size of the storage array cache. For access to
+deduplicated blocks, however, in-band write monitoring and the effects
+of COW blocks and mixed block sizes can impact the regular performance
+of the file system. Unless otherwise noted, all of our measurements
+of the run-time effects of deduplication
+were performed using Iometer&#XA0;[<A HREF="#iometer">9</A>] in a virtual machine
+stored on a 400&#XA0;GB 5-disk RAID-5 volume of an EMC CLARiiON CX3-40
+storage array.</P><!--TOC subsubsection Overhead of In-Band Write Monitoring-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc20">4.2.1</A>&#XA0;&#XA0;Overhead of In-Band Write Monitoring</H4><!--SEC END --><P>
+<A NAME="sec:eval-sha-1"></A></P><P>Since <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>&#X2019;s design is resilient to dropped write log entries, if the
+system becomes overloaded, we can shed or defer the work of in-band
+hash computation based on user-specified policy. Still, if write
+monitoring is enabled, the hash computation performed by <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> on
+every write IO can represent a non-trivial overhead.</P><P>To understand the worst-case effect of this, we ran a write-intensive
+workload with minimal computation on a 5&#XA0;GB virtual disk.
+Table&#XA0;<A HREF="#table:sha1">1</A> shows that these worst case effects can be
+significant. For example, for a 100%
+sequential, 100% write workload, the CPU overhead was 6.6&#XD7;
+that of normal at the same throughput level. However, because VMware ESX
+Server offloads the execution of the IO issuing path code, including
+the hash computation, onto idle processor cores, the actual IO
+throughput of this workload was unaffected.</P><BLOCKQUOTE CLASS="table"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<FONT SIZE=3>
+</FONT><TABLE BORDER=1 CELLSPACING=0 CELLPADDING=1><TR><TD VALIGN=top ALIGN=left><FONT SIZE=3> %-</FONT></TD><TD ALIGN=center NOWRAP COLSPAN=3><FONT SIZE=3>Baseline</FONT></TD><TD ALIGN=center NOWRAP COLSPAN=3><FONT SIZE=3><SPAN STYLE="font-variant:small-caps">DeDe</SPAN></FONT></TD></TR>
+<TR><TD VALIGN=top ALIGN=left><FONT SIZE=3> Sequential</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3><I>T</I></FONT><FONT SIZE=3> (MB/s)</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3><I>L</I></FONT><FONT SIZE=3> (ms)</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>CPU</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3><I>T</I></FONT><FONT SIZE=3> (MB/s)</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3><I>L</I></FONT><FONT SIZE=3> (ms)</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>CPU</FONT></TD></TR>
+<TR><TD VALIGN=top ALIGN=left><FONT SIZE=3> 100%</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>233</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>8.6</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>33%</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>233</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>8.6</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>220%</FONT></TD></TR>
+<TR><TD VALIGN=top ALIGN=left><FONT SIZE=3> 0%</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>84</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>24</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>16%</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>84</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>24</FONT></TD><TD VALIGN=top ALIGN=center NOWRAP><FONT SIZE=3>92%</FONT></TD></TR>
+</TABLE><FONT SIZE=3>
+</FONT><DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left><FONT SIZE=3>Table 1: Overhead of in-band write monitoring on a pure IO
+workload. Results are in
+terms of throughput (</FONT><FONT SIZE=3><I>T</I></FONT><FONT SIZE=3>) and latency (</FONT><FONT SIZE=3><I>L</I></FONT><FONT SIZE=3>) for Iometer
+issuing 32 outstanding 64&#XA0;KB IOs to a 5&#XA0;GB virtual disk.
+The CPU column denotes the utilized processor time relative to a
+single core.</FONT></TD></TR>
+</TABLE></DIV><FONT SIZE=3>
+</FONT><A NAME="table:sha1"></A><FONT SIZE=3>
+</FONT><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><BLOCKQUOTE CLASS="table"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=1><TR><TD ALIGN=center NOWRAP>&nbsp;</TD><TD ALIGN=center NOWRAP>Baseline</TD><TD ALIGN=center NOWRAP><FONT SIZE=2>Error</FONT></TD><TD ALIGN=center NOWRAP>SHA-1 </TD><TD ALIGN=center NOWRAP><FONT SIZE=2>Error</FONT><FONT SIZE=2></FONT></TD></TR>
+<TR><TD ALIGN=center NOWRAP>Operations/Min</TD><TD ALIGN=center NOWRAP>29989</TD><TD ALIGN=center NOWRAP>1.4%</TD><TD ALIGN=center NOWRAP>29719</TD><TD ALIGN=center NOWRAP>0.8%</TD></TR>
+<TR><TD ALIGN=center NOWRAP>Response Time (ms)</TD><TD ALIGN=center NOWRAP>60 ms</TD><TD ALIGN=center NOWRAP>0.8%</TD><TD ALIGN=center NOWRAP>61ms</TD><TD ALIGN=center NOWRAP>1.4%</TD></TR>
+</TABLE>
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Table 2: Overhead of in-band write monitoring on a SQL Server
+database VM running an online e-commerce application. The mean
+transaction rate (operations/min) and response times for 10 runs are
+within noise for this workload. The reported &#X201C;error&#X201D; is standard
+deviation as a percentage of mean.</TD></TR>
+</TABLE></DIV>
+<A NAME="table:sha1-dvdstore"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><P>We don&#X2019;t expect the effect of the additional computation to be a
+severe limitation in realistic workloads, which, unlike our
+microbenchmark, perform computation in addition to IO. To illustrate
+this, we ran
+the in-band SHA-1 computation on a realistic enterprise workload. We
+experimented with a Windows Server 2003 VM running a Microsoft SQL
+Server 2005 Enterprise Edition database configured with 4 virtual
+CPUs, 6.4&#XA0;GB of RAM, a 10&#XA0;GB system disk, a 250&#XA0;GB database disk, and
+a 50&#XA0;GB log disk. The database virtual disks were hosted on an 800&#XA0;GB
+RAID-0 volume with 6 disks; log virtual disks were placed on a 100&#XA0;GB
+RAID-0 volume with 10 disks. We used the Dell DVD store (DS2)
+database test suite&#XA0;[<A HREF="#dvdstore">2</A>], which implements a complete
+online e-commerce application, to stress the SQL database and measure
+its transactional throughput and latency. The DVD
+Store workload issues random 8&#XA0;KB IOs with a write/read ratio of 0.25,
+and a highly variable number of outstanding write IOs peaking around
+28&#XA0;[<A HREF="#srs-vpact09">7</A>]. Table&#XA0;<A HREF="#table:sha1-dvdstore">2</A> reports a
+summary of overall application performance with and without the
+in-band SHA-1 computation for writes. For this workload, we
+observed no application-visible performance loss, though extra CPU
+cycles on other processor cores were being used for the hash
+computations.</P><!--TOC subsubsection Overhead of COW Specialization-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc21">4.2.2</A>&#XA0;&#XA0;Overhead of COW Specialization</H4><!--SEC END --><P>Writing to a COW block in VMFS is an expensive operation, though the
+current implementation is not well optimized for the COW sub-blocks
+used extensively by <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>. In our prototype, it takes &#X223C;10&#XA0;ms to
+specialize a COW block, as this requires copying its content into a
+newly allocated
+block in order to update it. As such, any workload phase shift where a
+large set of previously deduplicated data is being specialized will
+result in significant performance loss. However, in general, we
+expect blocks that are identical between VMs are also less likely to
+be written to and, unlike most approaches to deduplication, we do not
+suffer this penalty for writes to unique blocks. Optimizations to
+delay sharing until candidate blocks have been &#X201C;stable&#X201D; for some
+length of time may help further mitigate this overhead, as suggested
+in&#XA0;[<A HREF="#hong04sandedup">8</A>].</P><!--TOC subsubsection Overhead of Mixed Block Sizes-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc22">4.2.3</A>&#XA0;&#XA0;Overhead of Mixed Block Sizes</H4><!--SEC END --><P>
+<A NAME="sec:eval-mixed"></A></P><P>VMFS&#X2019;s 1&#XA0;MB file blocks permit very low overhead translation from
+virtual disk IO to operations on the physical disk. While the mixed
+block size support we added to VMFS is designed to
+retain this efficiency whenever 1&#XA0;MB blocks can be used, it
+unavoidably introduces overhead for 4&#XA0;KB blocks from traversing the
+additional pointer block level and increased external
+fragmentation.</P><P>To measure the effects of this, we compared IO to two 5&#XA0;GB virtual
+disks, one backed entirely by 1&#XA0;MB blocks and one backed entirely by
+4&#XA0;KB blocks. These configurations represent the two extremes of
+deduplication: all unique blocks and all shared blocks, respectively.
+The first disk required one pointer block level and was broken into 3
+separate extents on the physical disk, while the second disk required
+two pointer block levels and spanned 163 separate extents.</P><BLOCKQUOTE CLASS="table"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+
+<TABLE BORDER=1 CELLSPACING=0 CELLPADDING=1><TR><TD ALIGN=center NOWRAP> % Sequential</TD><TD ALIGN=center NOWRAP>IO Type</TD><TD ALIGN=center NOWRAP COLSPAN=2>Throughput (MB/s)</TD><TD ALIGN=center NOWRAP>Overhead</TD></TR>
+<TR><TD ALIGN=center NOWRAP>&nbsp;</TD><TD ALIGN=center NOWRAP>&nbsp;</TD><TD ALIGN=center NOWRAP><DIV CLASS="center">BS=1&#XA0;MB</DIV></TD><TD ALIGN=center NOWRAP><DIV CLASS="center">BS=4&#XA0;KB</DIV></TD><TD ALIGN=center NOWRAP>&nbsp;</TD></TR>
+<TR><TD ALIGN=center NOWRAP> 100%</TD><TD ALIGN=center NOWRAP>Writes</TD><TD ALIGN=center NOWRAP>238</TD><TD ALIGN=center NOWRAP>150</TD><TD ALIGN=center NOWRAP>37%</TD></TR>
+<TR><TD ALIGN=center NOWRAP>
+0%</TD><TD ALIGN=center NOWRAP>Writes</TD><TD ALIGN=center NOWRAP>66</TD><TD ALIGN=center NOWRAP>60</TD><TD ALIGN=center NOWRAP>9%</TD></TR>
+<TR><TD ALIGN=center NOWRAP>
+100%</TD><TD ALIGN=center NOWRAP>Reads</TD><TD ALIGN=center NOWRAP>245</TD><TD ALIGN=center NOWRAP>135</TD><TD ALIGN=center NOWRAP>45%</TD></TR>
+<TR><TD ALIGN=center NOWRAP>
+0%</TD><TD ALIGN=center NOWRAP>Reads</TD><TD ALIGN=center NOWRAP>37</TD><TD ALIGN=center NOWRAP>32</TD><TD ALIGN=center NOWRAP>14%</TD></TR>
+</TABLE>
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Table 3: Overhead of mixed block
+fragmentation. Throughput achieved for 64&#XA0;KB sequential and random
+workloads with 16 outstanding IOs. The comparison is between two
+virtual disks backed by block sizes (BS) of 1&#XA0;MB and 4&#XA0;KB,
+respectively. In the 4&#XA0;KB case, the virtual disk file consists of
+163 disjoint fragments, which implies a sequential run of
+31&#XA0;MB on average.</TD></TR>
+</TABLE></DIV>
+<A NAME="table:mixed-block-overhead"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><P>The results of reading from these virtual disks are summarized in
+Table&#XA0;<A HREF="#table:mixed-block-overhead">3</A>. Unfortunately, sub-blocks
+introduced a non-trivial overhead for sequential IO. This is partly
+because VMFS&#X2019;s sub-block placement and IO handling is not yet
+well-optimized since sub-blocks have not previously been used in the
+VM IO critical path, whereas VMFS&#X2019;s file block IO has been heavily
+optimized. One possible way to mitigate this overhead is by
+preventing the deduplication process from subdividing file blocks
+unless they contain some minimum number of 4&#XA0;KB candidates for
+sharing. This would impact the space savings of deduplication, but
+would prevent <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> from subdividing entire file blocks for the sake
+of just one or two sharable blocks. Improvements in sub-block IO
+performance and block subdivision are considered future work.</P><!--TOC subsubsection Disk Array Caching Benefits-->
+<H4 CLASS="subsubsection"><!--SEC ANCHOR --><A NAME="htoc23">4.2.4</A>&#XA0;&#XA0;Disk Array Caching Benefits</H4><!--SEC END --><BLOCKQUOTE CLASS="figure"><DIV CLASS="center"><DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV>
+<IMG SRC="dede010.png">
+<DIV CLASS="caption"><TABLE CELLSPACING=6 CELLPADDING=0><TR><TD VALIGN=top ALIGN=left>Figure 7: Windows XP VM boot up time comparison between fully
+copied VMs and deduplicated VMs. Deduplicated VMs are booted twice
+in order to measure the impact of writing to deduplicated blocks.</TD></TR>
+</TABLE></DIV>
+<A NAME="fig:copied-vs-dedup"></A>
+<DIV CLASS="center"><HR WIDTH="80%" SIZE=2></DIV></DIV></BLOCKQUOTE><P>For some workloads, deduplication can actually <EM>improve</EM> run-time
+performance by decreasing the storage array cache footprint of the
+workload. To demonstrate this, we picked a common, critical,
+time-limited VDI workload: booting many VMs concurrently. VDI boot
+storms can happen as part of a nightly cycle of shutting down VMs and
+their hosts to conserve power, from patching guest
+operating systems <EM>en masse</EM>, from cluster fail-over, or for a
+myriad of other reasons.</P><P>
+To test the cache effects of deduplication, we compared the average time
+required to boot from one to twenty VMs simultaneously between two
+configurations:
+(1) the VMs were each full copies of the golden VM
+(much like the VDI configuration from
+Section&#XA0;<A HREF="#sec:vmware-vdi-analysis">4.1</A>) and (2) VMs
+were deduplicated copies. The results plotted in
+Figure&#XA0;<A HREF="#fig:copied-vs-dedup">7</A> show a dramatic improvement of
+deduplication versus full copies, owing to the decrease in
+cache footprint.</P><P>To further validate the overhead of COW specialization for a realistic
+workload, we also booted the set of VMs a second time after
+deduplication. The disk images were &#X201C;cold&#X201D; the first time; they
+consisted entirely of COW blocks. The second time, any blocks
+written to were already specialized and could be written to directly.
+The graph shows virtually no difference between these two cases,
+indicating that COW specialization overhead is not an issue for this
+workload. This is not unexpected, as there are only a few write
+operations during VM boot.</P><!--TOC subsection Deduplication Rate-->
+<H3 CLASS="subsection"><!--SEC ANCHOR --><A NAME="htoc24">4.3</A>&#XA0;&#XA0;Deduplication Rate</H3><!--SEC END --><P>
+<A NAME="sec:dedup-rate"></A></P><P>While our prototype&#X2019;s implementation of indexing has not yet been
+optimized, we measured the overall rate at which it could process
+modified blocks, as well as the performance of the three main
+operations performed by it: scanning the index, subdividing 1&#XA0;MB
+blocks into 4&#XA0;KB blocks, and COW sharing duplicates.</P><P>The index scanning process operates at nearly the disk&#X2019;s sequential
+access rate, as discussed in Section&#XA0;<A HREF="#sec:index:representation">3.2.2</A>.
+At &#X223C;23 bytes per index entry, our prototype can process entries for
+6.6&#XA0;GB of blocks <EM>per second</EM>. However, unlike block subdivision
+and COW sharing, which require time proportional to the number of
+newly shared blocks, the index scan requires time proportional to the
+total number of blocks in the file system, so it is critical that this
+be fast. Once new duplicates have been discovered by the index scan,
+1&#XA0;MB file blocks containing any of these duplicates can be subdivided
+into 4&#XA0;KB blocks at 37.5&#XA0;MB/sec. Finally, these newly discovered
+duplicates can be eliminated via COW sharing at 2.6&#XA0;MB/sec.</P><P>The COW sharing step limits our prototype to processing &#X223C;9&#XA0;GB of
+new <EM>shared</EM> blocks per hour. Unique blocks (<I>i.e.</I>, recently
+modified blocks whose hashes do not match anything in the index) can
+be processed at the full index scan rate.
+Furthermore, provisioning from templates, a source of large amounts of
+duplicate data, can be performed directly as a COW copy (at roughly
+1&#XA0;GB/sec), so our deduplication rate applies only to duplicates that
+arise outside of provisioning operations.
+Still, we feel that our COW sharing rate can be significantly improved
+with more profiling and optimization effort. However, even at its
+current rate, the prototype can eliminate duplicates at a reasonable
+rate for a VDI workload given only a few off-peak hours per day to
+perform out of band deduplication.</P><!--TOC section Related Work-->
+<H2 CLASS="section"><!--SEC ANCHOR --><A NAME="htoc25">5</A>&#XA0;&#XA0;Related Work</H2><!--SEC END --><P>
+<A NAME="sec:related"></A></P><P>Much work has been done towards investigating deduplication for file
+systems with a centralized component.
+Venti&#XA0;[<A HREF="#quinlan02venti">16</A>] pioneered the application of
+content-addressable storage (CAS) to file systems. Venti is a block
+storage system in which blocks are identified by a collision-resistant
+cryptographic hash of their contents and stored in an
+append-only log on disk. An on-disk index structure maps from
+content hashes to block locations. Venti&#X2019;s append-only
+structure makes it well suited to archival, but not to live file
+systems. Venti also depends heavily on a central server to maintain
+the block index.</P><P>Various other systems, notably Data Domain&#X2019;s
+archival system&#XA0;[<A HREF="#zhu08datadomain">26</A>] and
+Foundation&#XA0;[<A HREF="#rhea-foundation">17</A>], have extended and enhanced the
+Venti approach, but still follow the same basic principles.
+While deduplication for archival is generally well understood,
+deduplication in live file systems presents very different challenges.
+Because backup systems are concerned with keeping data for arbitrarily
+long periods of time, backup deduplication can rely on relatively
+simple append-only data stores. Data structures for live
+deduplication, however, must be amenable to dynamic allocation and
+garbage collection. Furthermore, live file systems, unlike backup
+systems, are latency sensitive for both reading and writing. Thus,
+live file system deduplication must have minimal impact on these critical
+paths. Backup data also tends to be well-structured and presented to
+the backup system in sequential streams, whereas live file systems must
+cope with random writes.</P><P>Many CAS-based storage systems,
+including&#XA0;[<A HREF="#centeradatasheet">5</A>, <A HREF="#quinlan02venti">16</A>, <A HREF="#murali-capfs">20</A>],
+address data exclusively by its content hash. Write operations return
+a content hash which is used for subsequent read operations. Applying
+this approach to VM disk storage implies multi-stage block address
+resolution, which can
+negatively affect performance&#XA0;[<A HREF="#cas-experiences">10</A>]. Furthermore,
+since data is stored in hash space, spatial locality of VM disk
+data is lost, which can result in significant loss of performance for
+some workloads. <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> avoids both of these issues by relying on
+regular file system layout policy and addressing all blocks by
+&#X27E8;filename,offset&#X27E9; tuples, rather than content
+addresses. <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> uses content hashes only for identifying duplicates.</P><P>Both NetApp&#X2019;s ASIS&#XA0;[<A HREF="#netapp-asis-website">14</A>] and Microsoft&#X2019;s Single
+Instance Store&#XA0;[<A HREF="#bolosky00sis">1</A>] use out of band deduplication to
+detect duplicates in live file systems in the background, similar to
+<SPAN STYLE="font-variant:small-caps">DeDe</SPAN>. SIS builds atop NTFS and applies content-addressable storage
+to whole files, using NTFS filters to implement file-level COW-like
+semantics.
+</P><P>While SIS depends on a centralized file system and a single host to
+perform scanning and indexing, Farsite builds atop SIS to
+perform deduplication in a distributed file
+system&#XA0;[<A HREF="#douceur02farsitededup">3</A>]. Farsite assigns responsibility
+for each file to a host based on a hash of the file&#X2019;s content.
+Each host stores files in its local file
+system, relying on SIS to locally deduplicate them. However, this
+approach incurs significant network overheads because most file
+system operations, including reads, require cross-host communication and
+file modifications require at least updating the distributed content
+hash index. </P><P>Hong&#X2019;s Duplicate Data Elimination (DDE) system&#XA0;[<A HREF="#hong04sandedup">8</A>]
+avoids much of the cross-host communication overhead of Farsite by
+building from IBM&#X2019;s Storage Tank SAN file
+system&#XA0;[<A HREF="#ibm-storage-tank">11</A>]. DDE hosts have direct access to
+the shared disk and can thus read directly from the file system.
+However, metadata operations, including updates to deduplicated shared
+blocks, must be reported to a centralized metadata server, which is
+solely responsible for detecting and coalescing duplicates.
+<SPAN STYLE="font-variant:small-caps">DeDe</SPAN> is closest in spirit to DDE. However, because <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> uses a
+completely decentralized scheme with no metadata server, it doesn&#X2019;t
+suffer from single points of failure or contention. Furthermore,
+<SPAN STYLE="font-variant:small-caps">DeDe</SPAN> prevents cross-host concurrency issues by partitioning work and
+relying on coarse-grain file locks, whereas DDE&#X2019;s approach of
+deduplicating from a central host in the midst of a multi-host file
+system introduces complex concurrency issues.</P><P>Numerous studies have addressed the effectiveness of
+content-addressable storage for various workloads.
+Work that has focused on VM
+deployments&#XA0;[<A HREF="#nath06vmcas">12</A>, <A HREF="#rhea-foundation">17</A>] has concluded that CAS
+was very effective at reducing storage space and network bandwidth
+compared to traditional data reduction techniques like
+compression.</P><P>Other work has addressed deduplication outside of file systems.
+Our work derives inspiration from Waldspurger&#XA0;[<A HREF="#waldspurger-osdi">25</A>]
+who proposed deduplication of memory contents, now implemented in the
+VMware ESX Server hypervisor&#XA0;[<A HREF="#esx-doc">23</A>]. In this system,
+identical memory pages from multiple virtual machine are backed by the
+same page and marked copy-on-write. The use of sharing hints from
+that work is
+analogous to our merge requests.
+
+</P><!--TOC section Conclusion-->
+<H2 CLASS="section"><!--SEC ANCHOR --><A NAME="htoc26">6</A>&#XA0;&#XA0;Conclusion</H2><!--SEC END --><P>
+<A NAME="sec:conclusion"></A></P><P>In this paper, we studied deduplication in the context of
+decentralized cluster file systems. We have described a novel software
+system, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN>, which provides block-level deduplication
+of a live, shared file system without any central coordination.
+Furthermore, <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> builds atop an existing file system without
+violating the file system&#X2019;s abstractions, allowing it to take
+advantage of regular file system block layout policies and in-place
+updates to unique data.
+Using our prototype implementation, we demonstrated that this approach
+can achieve up to 80% space reduction with minor performance overhead
+on realistic workloads.</P><P>We believe our techniques are applicable beyond virtual machine
+storage and plan to examine <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> in other settings in the future. We
+also plan to explore alternate indexing schemes
+that allow for greater control of deduplication policy. For example,
+high-frequency deduplication could prevent temporary file system bloat
+during operations that produce large amounts of duplicate data (<I>e.g.</I>,
+mass software updates), and deferral of merge
+operations could help reduce file system fragmentation. Additionally,
+we plan to further explore the trade-offs mentioned in this paper,
+such as block size versus metadata overhead, in-band versus
+out-of-band hashing, and sequential versus random index updates.</P><P><SPAN STYLE="font-variant:small-caps">DeDe</SPAN> represents just one of the many applications of deduplication to
+virtual machine environments. We believe that the next step for
+deduplication is to integrate and unify its application to file
+systems, memory compression, network bandwidth optimization, etc., to
+achieve end-to-end space and performance optimization.</P><!--TOC section Acknowledgments-->
+<H2 CLASS="section"><!--SEC ANCHOR -->Acknowledgments</H2><!--SEC END --><P>We would like to thank Mike Nelson, Abhishek Rai, Manjunath
+Rajashekhar, Mayank Rawat, Dan Scales, Dragan Stancevic, Yuen-Lin Tan,
+Satyam Vaghani, and Krishna Yadappanavar, who, along with two of the
+coauthors, developed the core of VMFS in unpublished work, which this
+paper builds on top of. We are thankful to Orran Krieger, James Cipar,
+and Saman Amarasinghe for conversations that helped clarify
+requirements of an online deduplication system. We are indebted to
+our shepherd Andrew Warfield, the anonymous reviewers, John
+Blumenthal, Mike Brown, Jim Chow, Peng Dai, Ajay Gulati, Jacob Henson, 
+Beng-Hong Lim, Dan Ports, Carl Waldspurger and Xiaoyun Zhu for providing
+detailed reviews of our work and their support and encouragement.
+Finally, thanks to everyone who has noticed the duplication in our
+project codename and brought it to our attention.</P><P>This material is partly based upon work supported under
+a National Science Foundation Graduate Research Fellowship.</P><!--TOC section <FONT SIZE=2>References</FONT>-->
+<H2 CLASS="section"><!--SEC ANCHOR --><FONT SIZE=2>References</FONT></H2><!--SEC END --><DL CLASS="thebibliography"></FONT><DT CLASS="dt-thebibliography"><FONT SIZE=2>
+<A NAME="bolosky00sis"><FONT SIZE=2><FONT COLOR=purple>[1]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+W.&#XA0;J. Bolosky, S.&#XA0;Corbin, D.&#XA0;Goebel, and J.&#XA0;R. Douceur.
+Single instance storage in </FONT><FONT SIZE=2>W</FONT><FONT SIZE=2>indows&#XAE;2000.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 4th </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>W</EM></FONT><FONT SIZE=2><EM>indows </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ystems
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ymposium (</EM></FONT><FONT SIZE=2><EM>WSS</EM></FONT><FONT SIZE=2><EM> &#X2019;00)</EM></FONT><FONT SIZE=2>, Seattle, </FONT><FONT SIZE=2>WA</FONT><FONT SIZE=2>, Aug. 2000. </FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="dvdstore"><FONT SIZE=2><FONT COLOR=purple>[2]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>Dell, Inc.</FONT><FONT SIZE=2>
+</FONT><FONT SIZE=2>DVD Store</FONT><FONT SIZE=2>.
+</FONT><FONT SIZE=2><TT>http://delltechcenter.com/page/DVD+store</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="douceur02farsitededup"><FONT SIZE=2><FONT COLOR=purple>[3]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+J.&#XA0;Douceur, A.&#XA0;Adya, W.&#XA0;Bolosky, P.&#XA0;Simon, and M.&#XA0;Theimer.
+Reclaiming space from duplicate files in a serverless distributed
+file system.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 22nd </EM></FONT><FONT SIZE=2><EM>I</EM></FONT><FONT SIZE=2><EM>nternational </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on
+</EM></FONT><FONT SIZE=2><EM>D</EM></FONT><FONT SIZE=2><EM>istributed </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>omputing </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ystems (</EM></FONT><FONT SIZE=2><EM>ICDCS</EM></FONT><FONT SIZE=2><EM> &#X2019;02)</EM></FONT><FONT SIZE=2>, Vienna, </FONT><FONT SIZE=2>A</FONT><FONT SIZE=2>ustria, July
+2002. </FONT><FONT SIZE=2>IEEE</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="hydrastor-fast09"><FONT SIZE=2><FONT COLOR=purple>[4]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+C.&#XA0;Dubnicki, L.&#XA0;Gryz, L.&#XA0;Heldt, M.&#XA0;Kaczmarczyk, W.&#XA0;Kilian, P.&#XA0;Strzelczak,
+J.&#XA0;Szczepkowski, C.&#XA0;Ungureanu, and M.&#XA0;Welnicki.
+Hydrastor: A scalable secondary storage.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 7th </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on </EM></FONT><FONT SIZE=2><EM>F</EM></FONT><FONT SIZE=2><EM>ile and
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnologies (</EM></FONT><FONT SIZE=2><EM>FAST</EM></FONT><FONT SIZE=2><EM> &#X2019;09)</EM></FONT><FONT SIZE=2>, San Francisco, </FONT><FONT SIZE=2>CA</FONT><FONT SIZE=2>, Feb. 2009.
+</FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="centeradatasheet"><FONT SIZE=2><FONT COLOR=purple>[5]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>EMC</FONT><FONT SIZE=2> </FONT><FONT SIZE=2>Centera</FONT><FONT SIZE=2> datasheet.
+</FONT><FONT SIZE=2><TT>http://www.emc.com/products/detail/hardware/centera.htm</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="fagin79extendiblehashing"><FONT SIZE=2><FONT COLOR=purple>[6]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+R.&#XA0;Fagin, J.&#XA0;Nievergelt, N.&#XA0;Pippenger, and H.&#XA0;R. Strong.
+Extendible hashing&#X2014;a fast access method for dynamic files.
+</FONT><FONT SIZE=2><EM>ACM Transactions on Database Systems</EM></FONT><FONT SIZE=2>, 4(3), Sept. 1979.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="srs-vpact09"><FONT SIZE=2><FONT COLOR=purple>[7]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+A.&#XA0;Gulati, C.&#XA0;Kumar, and I.&#XA0;Ahmad.
+Storage workload characterization and consolidation in virtualized
+environments.
+In </FONT><FONT SIZE=2><EM>2nd International Workshop on Virtualization Performance:
+Analysis, Characterization, and Tools (VPACT)</EM></FONT><FONT SIZE=2>, 2009.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="hong04sandedup"><FONT SIZE=2><FONT COLOR=purple>[8]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+B.&#XA0;Hong, D.&#XA0;Plantenberg, D.&#XA0;D.&#XA0;E. Long, and M.&#XA0;Sivan-Zimet.
+Duplicate data elimination in a </FONT><FONT SIZE=2>SAN</FONT><FONT SIZE=2> file system.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 21st </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ymposium on </EM></FONT><FONT SIZE=2><EM>M</EM></FONT><FONT SIZE=2><EM>ass </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ystems (</EM></FONT><FONT SIZE=2><EM>MSS</EM></FONT><FONT SIZE=2><EM> &#X2019;04)</EM></FONT><FONT SIZE=2>, Goddard, </FONT><FONT SIZE=2>MD</FONT><FONT SIZE=2>, Apr. 2004. </FONT><FONT SIZE=2>IEEE</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="iometer"><FONT SIZE=2><FONT COLOR=purple>[9]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+Iometer.
+</FONT><FONT SIZE=2><TT>http://www.iometer.org/</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="cas-experiences"><FONT SIZE=2><FONT COLOR=purple>[10]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+A.&#XA0;Liguori and E.&#XA0;V. Hensbergen.
+Experiences with content addressable storage and virtual disks.
+In </FONT><FONT SIZE=2><EM>Proceedings of the </EM></FONT><FONT SIZE=2><EM>W</EM></FONT><FONT SIZE=2><EM>orkshop on </EM></FONT><FONT SIZE=2><EM>I/O</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>V</EM></FONT><FONT SIZE=2><EM>irtualization
+(</EM></FONT><FONT SIZE=2><EM>WIOV</EM></FONT><FONT SIZE=2><EM> &#X2019;08)</EM></FONT><FONT SIZE=2>, San Diego, </FONT><FONT SIZE=2>CA</FONT><FONT SIZE=2>, Dec. 2008. </FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="ibm-storage-tank"><FONT SIZE=2><FONT COLOR=purple>[11]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+J.&#XA0;Menon, D.&#XA0;A. Pease, R.&#XA0;Rees, L.&#XA0;Duyanovich, and B.&#XA0;Hillsberg.
+</FONT><FONT SIZE=2>IBM</FONT><FONT SIZE=2> storage tank&#X2014;a heterogeneous scalable </FONT><FONT SIZE=2>SAN</FONT><FONT SIZE=2> file system.
+</FONT><FONT SIZE=2><EM>IBM Systems Journal</EM></FONT><FONT SIZE=2>, 42(2), 2003.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="nath06vmcas"><FONT SIZE=2><FONT COLOR=purple>[12]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+P.&#XA0;Nath, M.&#XA0;A. Kozuch, D.&#XA0;R. O&#X2019;Hallaron, J.&#XA0;Harkes, M.&#XA0;Satyanarayanan,
+N.&#XA0;Tolia, and M.&#XA0;Toups.
+Design tradeoffs in applying content addressable storage to
+enterprise-scale systems based on virtual machines.
+In </FONT><FONT SIZE=2><EM>Proceedings of the </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>A</EM></FONT><FONT SIZE=2><EM>nnual </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnical </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference
+(</EM></FONT><FONT SIZE=2><EM>ATEC</EM></FONT><FONT SIZE=2><EM> &#X2019;06)</EM></FONT><FONT SIZE=2>, Boston, </FONT><FONT SIZE=2>MA</FONT><FONT SIZE=2>, June 2006. </FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="nath08hpccas"><FONT SIZE=2><FONT COLOR=purple>[13]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+P.&#XA0;Nath, B.&#XA0;Urgaonkar, and A.&#XA0;Sivasubramaniam.
+Evaluating the usefulness of content addressable storage for
+high-performance data intensive applications.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 17th </EM></FONT><FONT SIZE=2><EM>H</EM></FONT><FONT SIZE=2><EM>igh </EM></FONT><FONT SIZE=2><EM>P</EM></FONT><FONT SIZE=2><EM>erformance </EM></FONT><FONT SIZE=2><EM>D</EM></FONT><FONT SIZE=2><EM>istributed
+</EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>omputing (</EM></FONT><FONT SIZE=2><EM>HPDC</EM></FONT><FONT SIZE=2><EM> &#X2019;08)</EM></FONT><FONT SIZE=2>, Boston, </FONT><FONT SIZE=2>MA</FONT><FONT SIZE=2>, June 2008. </FONT><FONT SIZE=2>ACM</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="netapp-asis-website"><FONT SIZE=2><FONT COLOR=purple>[14]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>N</FONT><FONT SIZE=2>etapp </FONT><FONT SIZE=2>D</FONT><FONT SIZE=2>eduplication </FONT><FONT SIZE=2>(ASIS)</FONT><FONT SIZE=2>.
+</FONT><FONT SIZE=2><TT>http://www.netapp.com/us/products/platform-os/dedupe.html</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="preslan99gfs"><FONT SIZE=2><FONT COLOR=purple>[15]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+K.&#XA0;W. Preslan, A.&#XA0;P. Barry, J.&#XA0;E. Brassow, G.&#XA0;M. Erickson, E.&#XA0;Nygaard, C.&#XA0;J.
+Sabol, S.&#XA0;R. Soltis, D.&#XA0;C. Teigland, and M.&#XA0;T. O&#X2019;Keefe.
+A 64-bit, shared disk file system for </FONT><FONT SIZE=2>L</FONT><FONT SIZE=2>inux.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 16th </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ymposium on </EM></FONT><FONT SIZE=2><EM>M</EM></FONT><FONT SIZE=2><EM>ass </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ystems (</EM></FONT><FONT SIZE=2><EM>MSS</EM></FONT><FONT SIZE=2><EM> &#X2019;99)</EM></FONT><FONT SIZE=2>, San Diego, </FONT><FONT SIZE=2>CA</FONT><FONT SIZE=2>, Mar. 1999. </FONT><FONT SIZE=2>IEEE</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="quinlan02venti"><FONT SIZE=2><FONT COLOR=purple>[16]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+S.&#XA0;Quinlan and S.&#XA0;Dorward.
+</FONT><FONT SIZE=2>V</FONT><FONT SIZE=2>enti: A new approach to archival data storage.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 1st </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on </EM></FONT><FONT SIZE=2><EM>F</EM></FONT><FONT SIZE=2><EM>ile and
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnologies (</EM></FONT><FONT SIZE=2><EM>FAST</EM></FONT><FONT SIZE=2><EM> &#X2019;02)</EM></FONT><FONT SIZE=2> </FONT><FONT SIZE=2>[</FONT><A HREF="#fast02"><FONT SIZE=2>19</FONT></A><FONT SIZE=2>]</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="rhea-foundation"><FONT SIZE=2><FONT COLOR=purple>[17]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+S.&#XA0;Rhea, R.&#XA0;Cox, and A.&#XA0;Pesterev.
+Fast, inexpensive content-addressed storage in </FONT><FONT SIZE=2>F</FONT><FONT SIZE=2>oundation.
+In </FONT><FONT SIZE=2><EM>Proceedings of the </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>A</EM></FONT><FONT SIZE=2><EM>nnual </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnical </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference
+(</EM></FONT><FONT SIZE=2><EM>ATEC</EM></FONT><FONT SIZE=2><EM> &#X2019;08)</EM></FONT><FONT SIZE=2>, Boston, </FONT><FONT SIZE=2>MA</FONT><FONT SIZE=2>, June 2008. </FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="schmuck02gpfs"><FONT SIZE=2><FONT COLOR=purple>[18]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+F.&#XA0;Schmuck and R.&#XA0;Haskin.
+</FONT><FONT SIZE=2>GPFS</FONT><FONT SIZE=2>: A shared-disk file system for large computing clusters.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 1st </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on </EM></FONT><FONT SIZE=2><EM>F</EM></FONT><FONT SIZE=2><EM>ile and
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnologies (</EM></FONT><FONT SIZE=2><EM>FAST</EM></FONT><FONT SIZE=2><EM> &#X2019;02)</EM></FONT><FONT SIZE=2> </FONT><FONT SIZE=2>[</FONT><A HREF="#fast02"><FONT SIZE=2>19</FONT></A><FONT SIZE=2>]</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="fast02"><FONT SIZE=2><FONT COLOR=purple>[19]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.
+</FONT><FONT SIZE=2><EM>The 1st </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on </EM></FONT><FONT SIZE=2><EM>F</EM></FONT><FONT SIZE=2><EM>ile and </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage
+</EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnologies (</EM></FONT><FONT SIZE=2><EM>FAST</EM></FONT><FONT SIZE=2><EM> &#X2019;02)</EM></FONT><FONT SIZE=2>, Monterey, </FONT><FONT SIZE=2>CA</FONT><FONT SIZE=2>, Jan. 2002.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="murali-capfs"><FONT SIZE=2><FONT COLOR=purple>[20]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+M.&#XA0;Vilayannur, P.&#XA0;Nath, and A.&#XA0;Sivasubramaniam.
+Providing tunable consistency for a parallel file store.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 4th </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on </EM></FONT><FONT SIZE=2><EM>F</EM></FONT><FONT SIZE=2><EM>ile and
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnologies (</EM></FONT><FONT SIZE=2><EM>FAST</EM></FONT><FONT SIZE=2><EM> &#X2019;05)</EM></FONT><FONT SIZE=2>, San Francisco, </FONT><FONT SIZE=2>CA</FONT><FONT SIZE=2>, Dec. 2005.
+</FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="vmfsdatasheet"><FONT SIZE=2><FONT COLOR=purple>[21]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>VMware, Inc.</FONT><FONT SIZE=2>
+</FONT><FONT SIZE=2>VMFS</FONT><FONT SIZE=2> datasheet.
+</FONT><FONT SIZE=2><TT>http://www.vmware.com/pdf/vmfs_datasheet.pdf</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="vmware-align"><FONT SIZE=2><FONT COLOR=purple>[22]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>VMware, Inc.</FONT><FONT SIZE=2>
+Recommendations for aligning </FONT><FONT SIZE=2>VMFS</FONT><FONT SIZE=2> partitions.
+Technical report, Aug. 2006.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="esx-doc"><FONT SIZE=2><FONT COLOR=purple>[23]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>VMware, Inc.</FONT><FONT SIZE=2>
+</FONT><FONT SIZE=2><EM>Introduction to </EM></FONT><FONT SIZE=2><EM>VMware</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>I</EM></FONT><FONT SIZE=2><EM>nfrastructure</EM></FONT><FONT SIZE=2>.
+2007.
+</FONT><FONT SIZE=2><TT>http://www.vmware.com/support/pubs/</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="vdi-doc"><FONT SIZE=2><FONT COLOR=purple>[24]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+</FONT><FONT SIZE=2>VMware, Inc.</FONT><FONT SIZE=2>
+</FONT><FONT SIZE=2>VMware</FONT><FONT SIZE=2> </FONT><FONT SIZE=2>V</FONT><FONT SIZE=2>irtual </FONT><FONT SIZE=2>D</FONT><FONT SIZE=2>esktop </FONT><FONT SIZE=2>I</FONT><FONT SIZE=2>nfrastructure </FONT><FONT SIZE=2>(VDI)</FONT><FONT SIZE=2> datasheet,
+2008.
+</FONT><FONT SIZE=2><TT>http://www.vmware.com/files/pdf/vdi_datasheet.pdf</TT></FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="waldspurger-osdi"><FONT SIZE=2><FONT COLOR=purple>[25]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+C.&#XA0;A. Waldspurger.
+Memory resource management in </FONT><FONT SIZE=2>VMware</FONT><FONT SIZE=2> </FONT><FONT SIZE=2>ESX</FONT><FONT SIZE=2> </FONT><FONT SIZE=2>Server</FONT><FONT SIZE=2>.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 5th </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ymposium on </EM></FONT><FONT SIZE=2><EM>O</EM></FONT><FONT SIZE=2><EM>perating
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>ystems </EM></FONT><FONT SIZE=2><EM>D</EM></FONT><FONT SIZE=2><EM>esign and </EM></FONT><FONT SIZE=2><EM>I</EM></FONT><FONT SIZE=2><EM>mplementation (</EM></FONT><FONT SIZE=2><EM>OSDI</EM></FONT><FONT SIZE=2><EM> &#X2019;02)</EM></FONT><FONT SIZE=2>, Boston, </FONT><FONT SIZE=2>MA</FONT><FONT SIZE=2>, Dec.
+2002. </FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD><DT CLASS="dt-thebibliography"><A NAME="zhu08datadomain"><FONT SIZE=2><FONT COLOR=purple>[26]</FONT></FONT></A></DT><DD CLASS="dd-thebibliography"><FONT SIZE=2>
+B.&#XA0;Zhu, K.&#XA0;Li, and H.&#XA0;Patterson.
+Avoiding the disk bottleneck in the </FONT><FONT SIZE=2>D</FONT><FONT SIZE=2>ata </FONT><FONT SIZE=2>D</FONT><FONT SIZE=2>omain deduplication
+file system.
+In </FONT><FONT SIZE=2><EM>Proceedings of the 6th </EM></FONT><FONT SIZE=2><EM>USENIX</EM></FONT><FONT SIZE=2><EM> </EM></FONT><FONT SIZE=2><EM>C</EM></FONT><FONT SIZE=2><EM>onference on </EM></FONT><FONT SIZE=2><EM>F</EM></FONT><FONT SIZE=2><EM>ile and
+</EM></FONT><FONT SIZE=2><EM>S</EM></FONT><FONT SIZE=2><EM>torage </EM></FONT><FONT SIZE=2><EM>T</EM></FONT><FONT SIZE=2><EM>echnologies (</EM></FONT><FONT SIZE=2><EM>FAST</EM></FONT><FONT SIZE=2><EM> &#X2019;08)</EM></FONT><FONT SIZE=2>, San Jose, </FONT><FONT SIZE=2>CA</FONT><FONT SIZE=2>, Feb. 2008. </FONT><FONT SIZE=2>USENIX</FONT><FONT SIZE=2>.</FONT></DD></DL><!--BEGIN NOTES document-->
+<HR CLASS="footnoterule"><DL CLASS="thefootnotes"><DT CLASS="dt-thefootnotes">
+<A NAME="note1" HREF="#text1">1</A></DT><DD CLASS="dd-thefootnotes">Unfortunately, owing to an
+ancient design flaw in IBM PC partition tables, guest writes are not
+necessarily <EM>aligned</EM> with <SPAN STYLE="font-variant:small-caps">DeDe</SPAN> blocks.
+Section&#XA0;<A HREF="#sec:vmware-vdi-analysis">4.1</A> has a more detailed
+analysis of this.
+</DD></DL>
+<!--END NOTES-->
+<!--CUT END -->
+<!--HTMLFOOT-->
+<!--ENDHTML-->
+<!--FOOTER-->
+<HR SIZE=2><BLOCKQUOTE CLASS="quote"><EM>This document was translated from L<sup>A</sup>T<sub>E</sub>X by
+</EM><A HREF="http://hevea.inria.fr/index.html"><EM>H</EM><EM><FONT SIZE=2><sup>E</sup></FONT></EM><EM>V</EM><EM><FONT SIZE=2><sup>E</sup></FONT></EM><EM>A</EM></A><EM>.</EM></BLOCKQUOTE></BODY>
+</HTML>

@@ -1,0 +1,119 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% ptmgreek.sty - italic greek letters with postscript fonts
+%
+% Volker Ahlers, March 2001 (volker@stat.physik.uni-potsdam.de)
+%
+% To be used with times.sty and mathptm.sty, provides
+% italic greek letters from psyro font, retaining
+% all other math letters ($x$, $f$ etc.) from Times font.
+%
+% Also defines a macro called `\micro' giving an upright
+% mu which can be used as `micro' in dimensions, working
+% in both math and text mode, e.g.
+%   $1.23$\,\micro{}m  or  $1.23\,\mathrm{\micro{}m}$,
+% a macro called `\Ohm' giving an upright capital omega,
+% and a macro called `\Laplace' giving an upright capital delta
+%
+%
+% Include packages in the following order:
+%   \usepackage{times}
+%   \usepackage{mathptm}
+%   \usepackage{ptmgreek}
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\NeedsTeXFormat{LaTeX2e}
+
+\ProvidesPackage{ptmgreek}%
+		[2001/03/02 v0.2 (Volker Ahlers)]
+
+\DeclareFontFamily{OML}{hlcm2}{}
+
+% psyro font, scaled to match size of Times
+\DeclareFontShape{OML}{hlcm2}{m}{it}{ <-> s * [0.9] psyro}{}
+
+% new symbol font: math letters from psyro
+\DeclareSymbolFont{lettersit}{OML}{hlcm2}{m}{it}
+
+% redeclare greek letters
+\DeclareMathSymbol{\Gamma}{0}{lettersit}{"47}
+\DeclareMathSymbol{\Delta}{0}{lettersit}{"44}
+\DeclareMathSymbol{\Theta}{0}{lettersit}{"51}
+\DeclareMathSymbol{\Lambda}{0}{lettersit}{"4C}
+\DeclareMathSymbol{\Xi}{0}{lettersit}{"58}
+\DeclareMathSymbol{\Pi}{0}{lettersit}{"50}
+\DeclareMathSymbol{\Sigma}{0}{lettersit}{"53}
+\DeclareMathSymbol{\Upsilon}{0}{lettersit}{"55}
+\DeclareMathSymbol{\Phi}{0}{lettersit}{"46}
+\DeclareMathSymbol{\Psi}{0}{lettersit}{"59}
+\DeclareMathSymbol{\Omega}{0}{lettersit}{"57}
+\DeclareMathSymbol{\alpha}{0}{lettersit}{"61}
+\DeclareMathSymbol{\beta}{0}{lettersit}{"62}
+\DeclareMathSymbol{\gamma}{0}{lettersit}{"67}
+\DeclareMathSymbol{\delta}{0}{lettersit}{"64}
+\DeclareMathSymbol{\epsilon}{0}{lettersit}{"65}
+\DeclareMathSymbol{\zeta}{0}{lettersit}{"7A}
+\DeclareMathSymbol{\eta}{0}{lettersit}{"68}
+\DeclareMathSymbol{\theta}{0}{lettersit}{"71}
+\DeclareMathSymbol{\iota}{0}{lettersit}{"69}
+\DeclareMathSymbol{\kappa}{0}{lettersit}{"6B}
+\DeclareMathSymbol{\lambda}{0}{lettersit}{"6C}
+\DeclareMathSymbol{\mu}{0}{lettersit}{"6D}
+\DeclareMathSymbol{\nu}{0}{lettersit}{"6E}
+\DeclareMathSymbol{\xi}{0}{lettersit}{"78}
+\DeclareMathSymbol{\pi}{0}{lettersit}{"70}
+\DeclareMathSymbol{\rho}{0}{lettersit}{"72}
+\DeclareMathSymbol{\sigma}{0}{lettersit}{"73}
+\DeclareMathSymbol{\tau}{0}{lettersit}{"74}
+\DeclareMathSymbol{\upsilon}{0}{lettersit}{"75}
+\DeclareMathSymbol{\phi}{0}{lettersit}{"66}
+\DeclareMathSymbol{\chi}{0}{lettersit}{"63}
+\DeclareMathSymbol{\psi}{0}{lettersit}{"79}
+\DeclareMathSymbol{\omega}{0}{lettersit}{"77}
+\DeclareMathSymbol{\varepsilon}{0}{lettersit}{"65}
+\DeclareMathSymbol{\vartheta}{0}{lettersit}{"4A}
+\DeclareMathSymbol{\varomega}{0}{lettersit}{"77}
+\DeclareMathSymbol{\varrho}{0}{lettersit}{"72}
+\DeclareMathSymbol{\varsigma}{0}{lettersit}{"56}
+\DeclareMathSymbol{\varphi}{0}{lettersit}{"6A}
+\DeclareMathSymbol{\varpi}{0}{lettersit}{"70}
+
+\DeclareFontFamily{OML}{hlcm3}{}
+
+% psyr font, scaled to match size of Times
+\DeclareFontShape{OML}{hlcm3}{m}{n}{ <-> s * [1.0] psyr}{}
+
+% new symbol font: math letters from psyr
+\DeclareSymbolFont{lettersrm}{OML}{hlcm3}{m}{n}
+
+% upright mu to be used in dimensions (`micro')
+\DeclareMathSymbol{\murm}{0}{lettersrm}{"6D}
+\newcommand{\micro}{\ensuremath{\murm}}
+
+% upright Omega to be used in dimensions (`Ohm')
+\DeclareMathSymbol{\Omegarm}{0}{letters}{"0A}
+\newcommand{\Ohm}{\ensuremath{\Omegarm}}
+
+% upright Delta to be used as Laplace operator
+\DeclareMathSymbol{\Deltarm}{0}{lettersrm}{"44}
+\newcommand{\Laplace}{\ensuremath{\Deltarm}}
+
+\endinput
+
+% -------------- to test this package, try: ----------------
+
+\[
+\alpha\beta\gamma\delta\epsilon\varepsilon\zeta\eta\theta\vartheta\iota\kappa
+\lambda\mu\nu\xi o\pi\varpi\rho\varrho\sigma\varsigma\tau\upsilon\phi\varphi
+\chi\psi\omega\varomega
+\]
+\[
+\Gamma\Delta\Theta\Lambda\Xi\Pi\Sigma\Upsilon\Phi\Psi\Omega
+\]
+\[
+12.3\,\mathrm{\micro m}\quad 47.5\,\Ohm
+\]
+\[
+\dot{T} = h^2 \Laplace T
+\]

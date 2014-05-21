@@ -1,0 +1,154 @@
+\begin{thebibliography}{10}
+
+\bibitem{bolosky00sis}
+W.~J. Bolosky, S.~Corbin, D.~Goebel, and J.~R. Douceur.
+\newblock Single instance storage in {W}indows\textregistered 2000.
+\newblock In {\em Proceedings of the 4th {USENIX} {W}indows {S}ystems
+  {S}ymposium ({WSS} '00)}, Seattle, {WA}, Aug. 2000. {USENIX}.
+
+\bibitem{dvdstore}
+{Dell, Inc.}
+\newblock {DVD Store}.
+\newblock \url{http://delltechcenter.com/page/DVD+store}.
+
+\bibitem{douceur02farsitededup}
+J.~Douceur, A.~Adya, W.~Bolosky, P.~Simon, and M.~Theimer.
+\newblock Reclaiming space from duplicate files in a serverless distributed
+  file system.
+\newblock In {\em Proceedings of the 22nd {I}nternational {C}onference on
+  {D}istributed {C}omputing {S}ystems ({ICDCS} '02)}, Vienna, {A}ustria, July
+  2002. {IEEE}.
+
+\bibitem{hydrastor-fast09}
+C.~Dubnicki, L.~Gryz, L.~Heldt, M.~Kaczmarczyk, W.~Kilian, P.~Strzelczak,
+  J.~Szczepkowski, C.~Ungureanu, and M.~Welnicki.
+\newblock Hydrastor: A scalable secondary storage.
+\newblock In {\em Proceedings of the 7th {USENIX} {C}onference on {F}ile and
+  {S}torage {T}echnologies ({FAST} '09)}, San Francisco, {CA}, Feb. 2009.
+  {USENIX}.
+
+\bibitem{centeradatasheet}
+{EMC} {Centera} datasheet.
+\newblock \url{http://www.emc.com/products/detail/hardware/centera.htm}.
+
+\bibitem{fagin79extendiblehashing}
+R.~Fagin, J.~Nievergelt, N.~Pippenger, and H.~R. Strong.
+\newblock Extendible hashing---a fast access method for dynamic files.
+\newblock {\em ACM Transactions on Database Systems}, 4(3), Sept. 1979.
+
+\bibitem{srs-vpact09}
+A.~Gulati, C.~Kumar, and I.~Ahmad.
+\newblock Storage workload characterization and consolidation in virtualized
+  environments.
+\newblock In {\em 2nd International Workshop on Virtualization Performance:
+  Analysis, Characterization, and Tools (VPACT)}, 2009.
+
+\bibitem{hong04sandedup}
+B.~Hong, D.~Plantenberg, D.~D.~E. Long, and M.~Sivan-Zimet.
+\newblock Duplicate data elimination in a {SAN} file system.
+\newblock In {\em Proceedings of the 21st {S}ymposium on {M}ass {S}torage
+  {S}ystems ({MSS} '04)}, Goddard, {MD}, Apr. 2004. {IEEE}.
+
+\bibitem{iometer}
+Iometer.
+\newblock \url{http://www.iometer.org/}.
+
+\bibitem{cas-experiences}
+A.~Liguori and E.~V. Hensbergen.
+\newblock Experiences with content addressable storage and virtual disks.
+\newblock In {\em Proceedings of the {W}orkshop on {I/O} {V}irtualization
+  ({WIOV} '08)}, San Diego, {CA}, Dec. 2008. {USENIX}.
+
+\bibitem{ibm-storage-tank}
+J.~Menon, D.~A. Pease, R.~Rees, L.~Duyanovich, and B.~Hillsberg.
+\newblock {IBM} storage tank---a heterogeneous scalable {SAN} file system.
+\newblock {\em IBM Systems Journal}, 42(2), 2003.
+
+\bibitem{nath06vmcas}
+P.~Nath, M.~A. Kozuch, D.~R. O'Hallaron, J.~Harkes, M.~Satyanarayanan,
+  N.~Tolia, and M.~Toups.
+\newblock Design tradeoffs in applying content addressable storage to
+  enterprise-scale systems based on virtual machines.
+\newblock In {\em Proceedings of the {USENIX} {A}nnual {T}echnical {C}onference
+  ({ATEC} '06)}, Boston, {MA}, June 2006. {USENIX}.
+
+\bibitem{nath08hpccas}
+P.~Nath, B.~Urgaonkar, and A.~Sivasubramaniam.
+\newblock Evaluating the usefulness of content addressable storage for
+  high-performance data intensive applications.
+\newblock In {\em Proceedings of the 17th {H}igh {P}erformance {D}istributed
+  {C}omputing ({HPDC} '08)}, Boston, {MA}, June 2008. {ACM}.
+
+\bibitem{netapp-asis-website}
+{N}etapp {D}eduplication {(ASIS)}.
+\newblock \url{http://www.netapp.com/us/products/platform-os/dedupe.html}.
+
+\bibitem{preslan99gfs}
+K.~W. Preslan, A.~P. Barry, J.~E. Brassow, G.~M. Erickson, E.~Nygaard, C.~J.
+  Sabol, S.~R. Soltis, D.~C. Teigland, and M.~T. O'Keefe.
+\newblock A 64-bit, shared disk file system for {L}inux.
+\newblock In {\em Proceedings of the 16th {S}ymposium on {M}ass {S}torage
+  {S}ystems ({MSS} '99)}, San Diego, {CA}, Mar. 1999. {IEEE}.
+
+\bibitem{quinlan02venti}
+S.~Quinlan and S.~Dorward.
+\newblock {V}enti: A new approach to archival data storage.
+\newblock In {\em Proceedings of the 1st {USENIX} {C}onference on {F}ile and
+  {S}torage {T}echnologies ({FAST} '02)}, Monterey, {CA}, Jan. 2002. {USENIX}.
+
+\bibitem{rhea-foundation}
+S.~Rhea, R.~Cox, and A.~Pesterev.
+\newblock Fast, inexpensive content-addressed storage in {F}oundation.
+\newblock In {\em Proceedings of the {USENIX} {A}nnual {T}echnical {C}onference
+  ({ATEC} '08)}, Boston, {MA}, June 2008. {USENIX}.
+
+\bibitem{schmuck02gpfs}
+F.~Schmuck and R.~Haskin.
+\newblock {GPFS}: A shared-disk file system for large computing clusters.
+\newblock In {\em Proceedings of the 1st {USENIX} {C}onference on {F}ile and
+  {S}torage {T}echnologies ({FAST} '02)}, Monterey, {CA}, Jan. 2002. {USENIX}.
+
+\bibitem{murali-capfs}
+M.~Vilayannur, P.~Nath, and A.~Sivasubramaniam.
+\newblock Providing tunable consistency for a parallel file store.
+\newblock In {\em Proceedings of the 4th {USENIX} {C}onference on {F}ile and
+  {S}torage {T}echnologies ({FAST} '05)}, San Francisco, {CA}, Dec. 2005.
+  {USENIX}.
+
+\bibitem{vmfsdatasheet}
+{VMware, Inc.}
+\newblock {VMFS} datasheet.
+\newblock \url{http://www.vmware.com/pdf/vmfs_datasheet.pdf}.
+
+\bibitem{vmware-align}
+{VMware, Inc.}
+\newblock Recommendations for aligning {VMFS} partitions.
+\newblock Technical report, Aug. 2006.
+
+\bibitem{esx-doc}
+{VMware, Inc.}
+\newblock {\em Introduction to {VMware} {I}nfrastructure}.
+\newblock 2007.
+\newblock \url{http://www.vmware.com/support/pubs/}.
+
+\bibitem{vdi-doc}
+{VMware, Inc.}
+\newblock {VMware} {V}irtual {D}esktop {I}nfrastructure {(VDI)} datasheet,
+  2008.
+\newblock \url{http://www.vmware.com/files/pdf/vdi_datasheet.pdf}.
+
+\bibitem{waldspurger-osdi}
+C.~A. Waldspurger.
+\newblock Memory resource management in {VMware} {ESX} {Server}.
+\newblock In {\em Proceedings of the 5th {USENIX} {S}ymposium on {O}perating
+  {S}ystems {D}esign and {I}mplementation ({OSDI} '02)}, Boston, {MA}, Dec.
+  2002. {USENIX}.
+
+\bibitem{zhu08datadomain}
+B.~Zhu, K.~Li, and H.~Patterson.
+\newblock Avoiding the disk bottleneck in the {D}ata {D}omain deduplication
+  file system.
+\newblock In {\em Proceedings of the 6th {USENIX} {C}onference on {F}ile and
+  {S}torage {T}echnologies ({FAST} '08)}, San Jose, {CA}, Feb. 2008. {USENIX}.
+
+\end{thebibliography}

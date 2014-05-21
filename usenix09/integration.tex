@@ -1,0 +1,20 @@
+% -*- TeX-master: "paper.tex"; TeX-PDF-mode: t; ispell-local-pdict: "words" -*-
+
+\section{Hypervisor Shortcut IO}
+\label{sec:integration}
+
+\begin{notes}
+  Shortcut IO. For 4k blocks with high ref counts, let's try to do shortcut IO.
+  Idea is that whenever such a block is read in first, we do page tracking for it
+  and ask page sharing to share that page. Subsequent reads to that page can then be 
+  satisfied directly from the shortcut tracked 'cache'.
+
+  We can prototype this fairly quickly by allocating up a kernel anon page and then
+  mem copying into it the contents of the predicted highly referenced page. Then provide
+  an explicit hint to our page sharing to attempt to share those two pages.
+
+  We've always wanted to try out the VDI shortcut i/o idea in context of dedup. Now is our
+  chance. If we can prototype this, I think our paper gets in for sure! :) --irfan
+
+\end{notes}
+

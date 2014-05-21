@@ -1,0 +1,151 @@
+% -*- TeX-PDF-mode: t -*-
+% rubber: rules rules.ini
+
+\documentclass[letterpaper,twocolumn,10pt]{article}
+
+\newif\ifdraft\draftfalse
+\newif\ifnotes\notesfalse
+\newif\ifinternal\internalfalse
+
+\ifdraft\else\notesfalse\internalfalse\fi
+
+%\usepackage[letterpaper,body={6.5in,9in}]{geometry}
+\usepackage{usenix,endnotes}
+\usepackage{mathptmx}
+\usepackage{ptmgreek}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{framed}
+\usepackage{color}
+\usepackage{xspace}
+\usepackage{graphicx}
+\usepackage{ifthen}
+%<bug avoidance from http://www.about-here.org/about_here/2007/08/latex-using-els.html>
+\makeatletter
+\newif\if@restonecol
+\makeatother
+\let\algorithm\relax
+\let\endalgorithm\relax 
+%</bug avoidance>
+%\usepackage{algorithm2e}
+\usepackage[ruled,vlined]{algorithm2e}
+\usepackage{nicefrac}
+\usepackage{url}
+\usepackage{cite}
+\usepackage[margin=-25pt,format=hang,listofformat=subparens]{subfig}
+\IfFileExists{microtype.sty}{
+  \usepackage[stretch=10,shrink=10]{microtype}
+%  \usepackage{microtype}
+}{
+  \PackageError{microtype}{Package microtype not found.  Please
+    install texlive-latex-recommended}{}
+}
+\ifdraft
+\usepackage{hginfo}
+\fi
+
+\ifdraft
+\fancyfoot[L]{{\bf \ifinternal{\small{VMware INTERNAL CONFIDENTIAL}} \fi DRAFT}}
+\fi
+
+% Disable page numbers in final copy
+\ifdraft\else\pagestyle{empty}\fi
+
+% Avoid widows and orphans
+\widowpenalty=500
+\clubpenalty=500
+
+% http://www.tug.org/mail-archives/pdftex/2007-December/007480.html
+% This screws up blending, but at least doesn't throw us into CMYK if
+% there is any alpha
+\pdfpageattr {/Group << /S /Transparency /I true /CS /DeviceRGB>>}
+
+\newcommand{\DeDe}{{\sc{DeDe}}\xspace}
+\newcommand{\SHORTCUT}{{\sc{shortcut}}\xspace}
+
+\newboolean{includeShortcut}
+\setboolean{includeShortcut}{false}
+%\setboolean{includeShortcut}{true}
+\newcommand{\incShortcut}[1]
+{
+  \ifthenelse{\boolean{includeShortcut}}
+             {{#1}\xspace}{\vspace{0in}}
+}
+
+\definecolor{shadecolor}{rgb}{0.9,0.9,0.9}
+\ifnotes
+\newenvironment{notes}[1][]{\begin{shaded}}{\end{shaded}}
+\else
+\newenvironment{notes}[1][]{\PackageError{main}{Notes environment found}}
+\fi
+
+\long\def\internal#1{
+  \ifinternal
+  \begin{shaded}
+    \leavevmode % Avoid a bug in shaded at the top of a page
+    #1
+  \end{shaded}
+  \else\fi
+}
+
+\def\urltilda{\lower .7ex\hbox{\~{}}\kern .04em}
+
+\def\ie{{\it i.e.}}
+\def\eg{{\it e.g.}}
+
+\def\shaone{SHA\nobreakdash-1\xspace}
+
+\input{util-macros}
+
+\begin{document}
+
+\input{title}
+
+\begin{abstract}
+\input{abstract}
+\end{abstract}
+
+\input{intro}
+\input{overview}
+\input{design}
+\incShortcut{
+  \input{integration}
+}
+\input{evaluation}
+\input{related}
+\input{conclusion}
+
+\section*{Acknowledgments}
+%So and so is the lead engineer on such and such and developed many of
+%its key algorithms, including. So and so originally conceived of such
+%and such.  We would like to thank So and So for valuable discussions,
+%feedback and help with experimental setup.
+
+We would like to thank Mike Nelson, Abhishek Rai, Manjunath
+Rajashekhar, Mayank Rawat, Dan Scales, Dragan Stancevic, Yuen-Lin Tan,
+Satyam Vaghani, and Krishna Yadappanavar, who, along with two of the
+coauthors, developed the core of VMFS in unpublished work, which this
+paper builds on top of. We are thankful to Orran Krieger, James Cipar,
+and Saman Amarasinghe for conversations that helped clarify
+requirements of an online deduplication system.  We are indebted to
+our shepherd Andrew Warfield, the anonymous reviewers, John
+Blumenthal, Mike Brown, Jim Chow, Peng Dai, Ajay Gulati, Jacob Henson, 
+Beng-Hong Lim, Dan Ports, Carl Waldspurger and Xiaoyun Zhu for providing
+detailed reviews of our work and their support and encouragement.
+Finally, thanks to everyone who has noticed the duplication in our
+project codename and brought it to our attention.
+
+{\small This material is partly based upon work supported under
+a Na\-tional Science Foundation Graduate Research Fellowship.}
+
+%,  who, along with one of the coauthors, originally proposed
+%the Shortcut IO part of this work.
+
+{\footnotesize
+\def\UrlFont{\tt \footnotesize}
+%\renewcommand{\baselinestretch}{0.96}
+\bibliographystyle{abbrv}
+\bibliography{auto-strings,paper,auto-aclements}
+}
+
+\end{document}

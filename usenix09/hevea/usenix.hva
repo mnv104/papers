@@ -1,0 +1,28 @@
+% -*- LaTeX -*-
+
+\def\maketitle{\par
+ \@maketitle\@thanks
+ \setcounter{footnote}{0}%
+ \let\maketitle\relax
+ \let\@maketitle\relax
+ \gdef\@thanks{}\gdef\@author{}\gdef\@title{}\let\thanks\relax}
+
+\def\@maketitle{
+ \@opencell{CLASS="title"}{}{}%
+ \begin{center}
+  {\Large\bf \@title \par}%
+  {\large\it
+   \begin{tabular}[t]{c}\@author
+   \end{tabular}\par}%
+ \end{center}
+ \@closecell
+ \par
+}
+
+%
+% The abstract is preceded by a 12-pt bold centered heading
+\def\abstract{\begin{center}%
+{\large\bf \abstractname\vspace{-.5em}\vspace{\z@}}%
+\end{center}
+\setenvclass{quote}{abstract}\begin{quote}}
+\def\endabstract{\end{quote}}

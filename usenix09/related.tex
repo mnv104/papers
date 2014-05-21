@@ -1,0 +1,159 @@
+% -*- TeX-master: "paper.tex"; TeX-PDF-mode: t; ispell-local-pdict: "words" -*-
+
+\section{Related Work}
+\label{sec:related}
+
+Much work has been done towards investigating deduplication for file
+systems with a centralized component.
+%
+Venti~\cite{quinlan02venti} pioneered the application of
+content-addressable storage (CAS) to file systems.  Venti is a block
+storage system in which blocks are identified by a collision-resistant
+cryptographic hash of their contents and stored in an
+append-only log on disk. An on-disk index structure maps from
+content hashes to block locations.  Venti's append-only
+structure makes it well suited to archival, but not to live file
+systems.  Venti also depends heavily on a central server to maintain
+the block index.
+
+Various other systems, notably Data Domain's
+archival system~\cite{zhu08datadomain} and
+Foundation~\cite{rhea-foundation}, have extended and enhanced the
+Venti approach, but still follow the same basic principles.
+While deduplication for archival is generally well understood,
+deduplication in live file systems presents very different challenges.
+Because backup systems are concerned with keeping data for arbitrarily
+long periods of time, backup deduplication can rely on relatively
+simple append-only data stores.  Data structures for live
+deduplication, however, must be amenable to dynamic allocation and
+garbage collection.  Furthermore, live file systems, unlike backup
+systems, are latency sensitive for both reading and writing.  Thus,
+live file system deduplication must have minimal impact on these critical
+paths. Backup data also tends to be well-structured and presented to
+the backup system in sequential streams, whereas live file systems must
+cope with random writes.
+
+Many CAS-based storage systems,
+including~\cite{centeradatasheet,quinlan02venti,murali-capfs},
+address data exclusively by its content hash.  Write operations return
+a content hash which is used for subsequent read operations.  Applying
+this approach to VM disk storage implies multi-stage block address
+resolution, which can
+negatively affect performance~\cite{cas-experiences}.  Furthermore,
+since data is stored in hash space, spatial locality of VM disk
+data is lost, which can result in significant loss of performance for
+some workloads.  \DeDe avoids both of these issues by relying on
+regular file system layout policy and addressing all blocks by
+$\tup<\text{filename},\text{offset}>$ tuples, rather than content
+addresses.  \DeDe uses content hashes only for identifying duplicates.
+
+Both NetApp's ASIS~\cite{netapp-asis-website} and Microsoft's Single
+Instance Store~\cite{bolosky00sis} use out of band deduplication to
+detect duplicates in live file systems in the background, similar to
+\DeDe.  SIS builds atop NTFS and applies content-addressable storage
+to whole files, using NTFS filters to implement file-level COW-like
+semantics.
+% "COW-like" because it's actually copy-on-close, which is subtly
+% different in ways that I don't understand at all but the paper makes
+% sound very important.
+
+While SIS depends on a centralized file system and a single host to
+perform scanning and indexing, Farsite builds atop SIS to
+perform deduplication in a distributed file
+system~\cite{douceur02farsitededup}.  Farsite assigns responsibility
+for each file to a host based on a hash of the file's content.
+Each host stores files in its local file
+system, relying on SIS to locally deduplicate them.  However, this
+approach incurs significant network overheads because most file
+system operations, including reads, require cross-host communication and
+file modifications require at least updating the distributed content
+hash index.  \XXX[Austin][The paper is frustratingly unclear about how
+they actually get identical files to the same place.  In fact, it's
+possible to do this without any migration, but they do have one
+sentence that suggests they do use migration.]
+
+Hong's Duplicate Data Elimination (DDE) system~\cite{hong04sandedup}
+avoids much of the cross-host communication overhead of Farsite by
+building from IBM's Storage Tank SAN file
+system~\cite{ibm-storage-tank}.  DDE hosts have direct access to
+the shared disk and can thus read directly from the file system.
+However, metadata operations, including updates to deduplicated shared
+blocks, must be reported to a centralized metadata server, which is
+solely responsible for detecting and coalescing duplicates.
+\DeDe is closest in spirit to DDE.  However, because \DeDe uses a
+completely decentralized scheme with no metadata server, it doesn't
+suffer from single points of failure or contention.  Furthermore,
+\DeDe prevents cross-host concurrency issues by partitioning work and
+relying on coarse-grain file locks, whereas DDE's approach of
+deduplicating from a central host in the midst of a multi-host file
+system introduces complex concurrency issues.
+
+% Our system, \DeDe, is closest in its nature to DDE, however, there are
+% some significant differences.  \DeDe uses a completely decentralized
+% scheme with no metadata server and thus it allows great
+% simplifications to the deduplication process. It also means that \DeDe
+% doesn't suffer from single points of failure or contention. Each host
+% acts independently which allows the processing load associated with
+% finding duplicates to scale well and also implies that the system can
+% survive an arbitrary number of hosts failing.  No assumptions are made
+% about a communication network between hosts.  \XXX[Anything else]
+
+% Data deduplication has also been studied in context of low bandwidth
+% network file transfer. For example, LBFS~\cite{lbfs} provides
+% performance enhancements by using variable-sized chunking. The online
+% file system problem differs significantly.
+
+%% \XXX[P. Kulkarni, F. Douglis, J. D. LaVoie, J. M. Tracey:
+%%   Redundancy Elimination Within Large Collections of Files. In
+%%   Proceedings of USENIX Annual Technical Conference, pages 59-72,
+%%   2004.]
+
+%% \XXX[N. Jain, M. Dahlin, and R. Tewari. TAPER: Tiered Approach for
+%%   Eliminating Redundancy in Replica Synchronization. In Proceedings of
+%%   USENIX File And Storage Systems (FAST), 2005.]
+
+%% \XXX[N. Tolia, M. Kozuch, M. Satyanarayanan, B. Karp, A. Perrig, and
+%%   T. Bressoud. Opportunistic use of content addressable storage for
+%%   distributed file systems. In Proceedings of the 2003 USENIX Annual
+%%   Technical Conference, pages 127-140, San Antonio, TX, June 2003]
+
+%% \XXX[compare against data compression techniques for reducing space utilization]
+
+%% \XXX[Deep Store]
+
+%% \XXX[Patiche backup]
+
+% \XXX[Waldspurger, Disco]
+
+Numerous studies have addressed the effectiveness of
+content-addressable storage for various workloads.
+Work that has focused on VM
+deployments~\cite{nath06vmcas,rhea-foundation} has concluded that CAS
+was very effective at reducing storage space and network bandwidth
+compared to traditional data reduction techniques like
+compression.
+
+%% The study also noted that compression can complement CAS
+%% at further reducing storage and network resources.
+%% \DeDe, while
+%% sharing the same sprit and motivation, differs in several significant
+%% ways, namely the assumption of a centralized file system and global
+%% namespace to store the virtual machine images.  The ISR prototype is
+%% built on top of a centralized file system (CODA) and represented each
+%% memory and disk image file as a sequence of fixed size chunk files and
+%% names the chunk file as the cryptographic checksum of the chunk's
+%% contents. Deduplication is achieved by virtue of the global namespace
+%% and storing a single instance of a chunk.
+
+% Content-addressable storage and their utility for data intensive
+% high-performance computing and scientific applications was evaluated
+% in~\cite{nath08hpccas}.
+
+Other work has addressed deduplication outside of file systems.
+Our work derives inspiration from Waldspurger~\cite{waldspurger-osdi}
+who proposed deduplication of memory contents, now implemented in the
+VMware ESX Server hypervisor~\cite{esx-doc}.  In this system,
+identical memory pages from multiple virtual machine are backed by the
+same page and marked copy-on-write.  The use of sharing hints from
+that work is
+analogous to our merge requests.

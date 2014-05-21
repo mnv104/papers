@@ -1,0 +1,22 @@
+% -*- LaTeX -*-
+
+\newcounter{subfloat}[figure]
+\renewcommand{\thesubfloat}{\alph{subfloat}}
+\makeatletter
+\newcommand{\subfloat}[2][]{%
+  \stepcounter{subfloat}%
+  % This is totally stupid.  This comes before the figure's label,
+  % which means the figure counter is actually off by one.  This is
+  % actually *incompatible* with the way subfig sets up its labels (it
+  % uses the pageref field of the sub@#1 label to record this and
+  % \subref* is simply pageref, but HeVeA discards the pageref when
+  % reading the .aux file), so we have to be careful not to use the
+  % LaTeX-generated .aux file.
+  \def\@currentlabel{\addtocounter{figure}{1}\thefigure\addtocounter{figure}{-1}(\thesubfloat)}%
+  #2
+  \begin{hva@capted}(\thesubfloat)~#1\end{hva@capted}}
+\def\subref*#1{\ref{#1}}
+\makeatother
+
+% Just ignore captionsetup
+\newcommand{\captionsetup}[2][]{}

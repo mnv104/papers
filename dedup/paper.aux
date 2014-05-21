@@ -1,0 +1,133 @@
+\relax 
+\citation{vmfsdatasheet}
+\citation{preslan99gfs}
+\citation{schmuck02gpfs}
+\citation{vdi-doc}
+\citation{quinlan02venti,douceur02farsitededup,rhea-foundation,hong04sandedup,netapp-asis-website,zhu08datadomain,centeradatasheet,hydrastor-fast09,bolosky00sis}
+\citation{cas-experiences}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}}
+\citation{esx-doc}
+\@writefile{toc}{\contentsline {section}{\numberline {2}System Overview}{2}}
+\newlabel{sec:overview}{{2}{2}}
+\newlabel{sec:idea:out-of-band}{{2}{2}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Cluster configuration in which multiple hosts concurrently access the same storage volume. Each host runs the VMFS file system driver ({\tt  \relax \fontsize  {9}{11}\selectfont  \abovedisplayskip 8.5\p@ plus3\p@ minus4\p@ \abovedisplayshortskip \z@ plus2\p@ \belowdisplayshortskip 4\p@ plus2\p@ minus2\p@ \def \leftmargin \leftmargini \parsep 4\p@ plus2\p@ minus\p@ \topsep 8\p@ plus2\p@ minus4\p@ \itemsep 4\p@ plus2\p@ minus\p@ {\leftmargin \leftmargini \topsep 4\p@ plus2\p@ minus2\p@ \parsep 2\p@ plus\p@ minus\p@ \itemsep \parsep }\belowdisplayskip \abovedisplayskip vmfs3}), the deduplication driver ({\tt  \relax \fontsize  {9}{11}\selectfont  \abovedisplayskip 8.5\p@ plus3\p@ minus4\p@ \abovedisplayshortskip \z@ plus2\p@ \belowdisplayshortskip 4\p@ plus2\p@ minus2\p@ \def \leftmargin \leftmargini \parsep 4\p@ plus2\p@ minus\p@ \topsep 8\p@ plus2\p@ minus4\p@ \itemsep 4\p@ plus2\p@ minus\p@ {\leftmargin \leftmargini \topsep 4\p@ plus2\p@ minus2\p@ \parsep 2\p@ plus\p@ minus\p@ \itemsep \parsep }\belowdisplayskip \abovedisplayskip dedup}), and other processes such as VMs.}}{2}}
+\newlabel{fig:vmfs-sysmodel}{{1}{2}}
+\citation{cas-experiences,nath08hpccas}
+\citation{zhu08datadomain}
+\citation{nath06vmcas}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Required File System Abstractions}{3}}
+\newlabel{sec:idea:compare-and-share}{{2.1}{3}}
+\citation{vmfsdatasheet}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}VMFS}{4}}
+\newlabel{sec:vmfs}{{2.2}{4}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Mixed block sizes allow any 1\nobreakspace  {}MB file block to be divided into 256 separate 4\nobreakspace  {}KB sub-blocks.}}{4}}
+\newlabel{fig:mixed-block-sizes}{{2}{4}}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Design and Implementation}{5}}
+\newlabel{sec:design}{{3}{5}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Write Monitoring}{5}}
+\newlabel{sec:idea:stale-wlog}{{3.1}{5}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces For write monitoring, only a lightweight kernel module lies in the IO critical path to opportunistically calculate hashes of blocks while they are still in memory. A userspace daemon flushes write logs to disk periodically. Duplicate detection and elimination are done out-of-band.}}{5}}
+\newlabel{fig:write-monitoring}{{3}{5}}
+\citation{quinlan02venti}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}The Index}{6}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.1}Virtual Arena}{6}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.2.2}On-disk Representation}{6}}
+\newlabel{sec:index:representation}{{3.2.2}{6}}
+\citation{fagin79extendiblehashing}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Indexing and Duplicate Elimination}{7}}
+\newlabel{fig:new-unique}{{4a}{7}}
+\newlabel{sub@fig:new-unique}{{(a)}{a}}
+\newlabel{fig:unique-to-shared}{{4b}{7}}
+\newlabel{sub@fig:unique-to-shared}{{(b)}{b}}
+\newlabel{fig:shared-to-shared}{{4c}{7}}
+\newlabel{sub@fig:shared-to-shared}{{(c)}{c}}
+\newlabel{fig:gc}{{4d}{7}}
+\newlabel{sub@fig:gc}{{(d)}{d}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces All possible updates to an index entry.}}{7}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(a)}{\ignorespaces {When the hash $H$ of the block at offset $o$ in file $f$ is not in the index, a new unique entry is added.}}}{7}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(b)}{\ignorespaces {When a second occurrence of hash $H$ is found and the block's contents pass verification, we place it in the virtual arena and upgrade the index entry to shared.}}}{7}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(c)}{\ignorespaces {When a duplicate of a shared block is found, we verify its contents and replace the block with a reference to the existing shared block.}}}{7}}
+\@writefile{lof}{\contentsline {subfigure}{\numberline{(d)}{\ignorespaces {Unique entries are garbage collected when the indexing process finds a write record to that block with a different hash. Shared entries are garbage collected when only the reference from the virtual arena remains.}}}{7}}
+\newlabel{fig:index-states}{{4}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.1}Single Host Indexing}{7}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}Multi-Host Indexing}{8}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.3}Garbage Collection}{8}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Evaluation}{8}}
+\newlabel{sec:evaluation}{{4}{8}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Analysis of Virtual Disks in the Wild}{9}}
+\newlabel{sec:vmware-vdi-analysis}{{4.1}{9}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Space Overheads}{9}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Duplication available at various block sizes and for different variations on the approach. Data is from a production VDI deployment of 113 Windows XP VMs.}}{9}}
+\newlabel{fig:vmware-it-vdi-bar}{{5}{9}}
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces CDF of block duplication counts. A few blocks occur over 100,000 times. Data is from the same deployment as shown in Figure\nobreakspace  {}5\hbox {}.}}{9}}
+\newlabel{fig:vmware-it-vdi-cdf}{{6}{9}}
+\citation{vmware-align}
+\citation{iometer}
+\citation{dvdstore}
+\citation{srs-vpact09}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}Partition Alignment Issues}{10}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.3}Deduplication Versus Linked Clones}{10}}
+\newlabel{sec:vmware-vdi-linked-clones}{{4.1.3}{10}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Overhead of in-band write monitoring on a pure IO workload. Results are in terms of throughput ({\it  T}) and latency ({\it  L}) for Iometer issuing 32 outstanding 64\nobreakspace  {}KB IOs to a 5\nobreakspace  {}GB virtual disk. The CPU column denotes the utilized processor time relative to a single core.}}{10}}
+\newlabel{table:sha1}{{1}{10}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Run-time Effects of Deduplication}{10}}
+\newlabel{sec:run-time-overheads}{{4.2}{10}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Overhead of In-Band Write Monitoring}{10}}
+\newlabel{sec:eval-sha-1}{{4.2.1}{10}}
+\citation{hong04sandedup}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Overhead of in-band write monitoring on a SQL Server database VM running an online e-commerce application. The mean transaction rate (operations/min) and response times for 10 runs are within noise for this workload. The reported ``error'' is standard deviation as a percentage of mean.}}{11}}
+\newlabel{table:sha1-dvdstore}{{2}{11}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Overhead of COW Specialization}{11}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Overhead of Mixed Block Sizes}{11}}
+\newlabel{sec:eval-mixed}{{4.2.3}{11}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Overhead of mixed block fragmentation. Throughput achieved for 64\nobreakspace  {}KB sequential and random workloads with 16 outstanding IOs. The comparison is between two virtual disks backed by block sizes (BS) of 1\nobreakspace  {}MB and 4\nobreakspace  {}KB, respectively. In the 4\nobreakspace  {}KB case, the virtual disk file consists of 163 disjoint fragments, which implies a sequential run of 31\nobreakspace  {}MB on average.}}{11}}
+\newlabel{table:mixed-block-overhead}{{3}{11}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.4}Disk Array Caching Benefits}{11}}
+\citation{quinlan02venti}
+\citation{zhu08datadomain}
+\citation{rhea-foundation}
+\@writefile{lof}{\contentsline {figure}{\numberline {7}{\ignorespaces Windows XP VM boot up time comparison between fully copied VMs and deduplicated VMs. Deduplicated VMs are booted twice in order to measure the impact of writing to deduplicated blocks.}}{12}}
+\newlabel{fig:copied-vs-dedup}{{7}{12}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Deduplication Rate}{12}}
+\newlabel{sec:dedup-rate}{{4.3}{12}}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Related Work}{12}}
+\newlabel{sec:related}{{5}{12}}
+\citation{quinlan02venti,centeradatasheet,murali-capfs}
+\citation{cas-experiences}
+\citation{netapp-asis-website}
+\citation{bolosky00sis}
+\citation{douceur02farsitededup}
+\citation{hong04sandedup}
+\citation{ibm-storage-tank}
+\citation{nath06vmcas,rhea-foundation}
+\citation{waldspurger-osdi}
+\citation{esx-doc}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{13}}
+\newlabel{sec:conclusion}{{6}{13}}
+\bibstyle{abbrv}
+\bibdata{auto-strings,paper,auto-aclements}
+\bibcite{bolosky00sis}{1}
+\bibcite{dvdstore}{2}
+\bibcite{douceur02farsitededup}{3}
+\bibcite{hydrastor-fast09}{4}
+\bibcite{centeradatasheet}{5}
+\bibcite{fagin79extendiblehashing}{6}
+\bibcite{srs-vpact09}{7}
+\bibcite{hong04sandedup}{8}
+\bibcite{iometer}{9}
+\bibcite{cas-experiences}{10}
+\bibcite{ibm-storage-tank}{11}
+\bibcite{nath06vmcas}{12}
+\bibcite{nath08hpccas}{13}
+\bibcite{netapp-asis-website}{14}
+\bibcite{preslan99gfs}{15}
+\bibcite{quinlan02venti}{16}
+\bibcite{rhea-foundation}{17}
+\bibcite{schmuck02gpfs}{18}
+\bibcite{murali-capfs}{19}
+\bibcite{vmfsdatasheet}{20}
+\bibcite{vmware-align}{21}
+\bibcite{esx-doc}{22}
+\bibcite{vdi-doc}{23}
+\bibcite{waldspurger-osdi}{24}
+\bibcite{zhu08datadomain}{25}

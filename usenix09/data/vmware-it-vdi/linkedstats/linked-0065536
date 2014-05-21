@@ -1,0 +1,5 @@
+Total (including zeros): 31354560
+Total From: 21945807, Total To: 12652174, Dedup From: 10131864, Dedup To: 838231
+Duplicate reduction:   618GB->51.2GB  (91%)
+Total reduction:       1.3TB->772GB   (42%)
+

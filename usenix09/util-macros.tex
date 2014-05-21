@@ -1,0 +1,34 @@
+% -*- TeX-master: "paper.tex"; TeX-PDF-mode: t -*-
+
+% some useful macros
+
+% Tuple typesetting
+% Adds triangle brackets and spaces commas.  ie $\tup{1,2,3}$
+% Arguments can be enclosed in braces or angle brackets
+\makeatletter
+\def\tup{%
+  \def\tupInside\tupStart##1,##2\tupEnd{%
+    ##1
+    \def\tempa{}\def\tempb{##2}
+    \ifx\tempa\tempb\else
+    ,\;\tupInside\tupStart##2\tupEnd
+    \fi}
+  \def\tupBraces##1{\left\langle\tupInside\tupStart##1,\tupEnd\right\rangle}
+  \def\tupBrackets<##1>{\tupBraces{##1}}
+  \@ifnextchar<\tupBrackets\tupBraces}
+\makeatother
+
+\definecolor{xxxcolor}{rgb}{0.8,0,0}
+\makeatletter
+\long\def\XXX{\@ifnextchar[{\@XXX}{\@XXX[]}}
+\long\def\@XXX[#1]{\@ifnextchar[{\@@@XXX{#1}}{\@@XXX{#1}}}
+\ifnotes
+% Show XXX comments
+\long\def\@@XXX#1{{\color{xxxcolor} XXX #1\xspace}}
+\long\def\@@@XXX#1[#2]{{\color{xxxcolor} XXX (#1) #2\xspace}}
+\else
+% Hide XXX comments
+\long\def\@@XXX#1{\ignorespaces}
+\long\def\@@@XXX#1[#2]{\ignorespaces}
+\fi
+\makeatother

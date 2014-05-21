@@ -1,0 +1,15 @@
+% -*- LaTeX -*-
+
+% util-macros
+\newcommand{\XXX}[1][]{\XXXtwo}
+\newcommand{\XXXtwo}[1][]{}
+
+\def\tup<#1>{\left\langle#1\right\rangle}
+
+% Random LaTeX definitions HeVeA doesn't know
+\newcommand{\IfFileExists}[3]{#2}
+\newcommand{\pdfpageattr}[1]{}
+\newcommand{\nobreakdash}{}
+\newcommand{\parbox}[2][]{}
+
+% XXX Ordered citations

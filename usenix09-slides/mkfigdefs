@@ -1,0 +1,86 @@
+#!/usr/bin/python
+
+import random
+
+#
+# XP VM figure
+#
+
+W = 4
+H = 3
+
+random.seed(1)
+cells = range(W*H)
+keeps = dict((c,random.randint(0,3)) for c in cells)
+
+# Define colors
+for i in cells:
+    print "\\definecolor{dedupcell%d}{rgb:hsb}{%g,1,1}" % (i,i/float(len(cells)))
+
+# Define permutations
+random.seed(1)
+for vm in range(4):
+    random.shuffle(cells)
+    i = 0
+    for x in range(W):
+        for y in range(H):
+            print "\\tikzset{dedupcell-%d-%d-%d/.style={fill=dedupcell%d,dedupcell-%s}}" \
+                % (vm,x,y,cells[i],"keep" if vm == keeps[cells[i]] else "free")
+            i += 1
+
+#
+# Three-stage write logs
+#
+
+def hashcolor(h):
+#    return (i,0.8*float(hash)/0xFFFFFF)
+    return (0.35*float(h)/0xFFFFFF-0.225)%1
+
+def casefunc(name, alts, onebase=False):
+    print "\\def\\%s#1{\\ifcase #1%s" % (name, "\\relax\\or" if onebase else "")
+    print "\\or ".join(alts)
+    print "\\fi}"
+
+random.seed(2)
+tswlogfuncs = []
+for vm in range(4):
+    recs = [random.randint(0,0xFFFFFF) for i in range(3)]
+    for rec in range(3):
+        h = recs[rec]
+        print "\\definecolor{tswlog%d%d}{rgb:hsb}{%g,1,1}" % \
+            (vm+1, rec+1, hashcolor(h))
+    tswlogfunc = "tswlog%c" % (chr(ord('a') + vm))
+    casefunc(tswlogfunc, ("%06x.." % h for h in recs), True)
+    tswlogfuncs.append("\\expandafter\\" + tswlogfunc)
+casefunc("tswlog", tswlogfuncs, True)
+
+#
+# Index
+#
+
+
+ENTRIES = 9
+
+random.seed(2)
+entries = [random.randint(0,0xFFFFFF) for i in range(ENTRIES-2)]
+entries = [(e, random.choice((False, True))) for e in entries]
+entries.extend([(0x6cd412, False), (0xc277d6, True)])
+entries.sort()
+
+for i, (hash, shared) in enumerate(entries):
+    print "\\definecolor{index%d}{rgb:hsb}{%g,1,1}" % \
+        (i,hashcolor(hash))
+    print "\\tikzset{indexptr-%d/.style={indexptr-%s}}" % \
+        (i, "shared" if shared else "unique")
+casefunc("indexhash", ("%06x.." % h for h, _ in entries))
+
+#
+# Write log
+#
+
+hashes = [0x6cd412, 0x12067c, 0xc277d6]
+
+casefunc("wloghash", ("%06x.." % h for h in hashes))
+for i, h in enumerate(hashes):
+    print "\\definecolor{wlog%d}{rgb:hsb}{%g,1,1}" % \
+        (i,hashcolor(h))

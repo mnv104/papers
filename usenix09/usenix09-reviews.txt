@@ -1,0 +1,533 @@
+===========================================================================
+                          USENIX '09 Review #198A
+                Updated Wednesday 4 Feb 2009 4:02:25pm PST
+---------------------------------------------------------------------------
+    Paper #198: Decentralized Deduplication in SAN Cluster Filesystems
+---------------------------------------------------------------------------
+
+                      Overall merit: 2. Weak reject (I will argue against
+                                        this paper)
+                 Reviewer expertise: 3. Knowledgeable (I am familiar with
+                                        substantial work in the area)
+
+                         ===== Paper summary =====
+
+This paper talks about a technique for deduplication of VM image files
+implemented specifically for cluster filesystems like VMware's VMFS.
+The main point of the paper is to present an asynchronous
+deduplication system that involves only very weak coordination between
+the individual hosts.  This is achieved by performing all hashing
+independently on local hosts, and then lazily and independently
+updating a shared index with an exclusive lock.  All host-to-host
+communications are done lazily through files in the file system.  A
+secondary point to the paper is to show an implementation of dedup
+that is layered on top of an existing file system, and uses the
+existing lookup functions provided by the base filesystem to provide
+efficient indirection rather than complicating it by internalizing dedup.
+
+                ===== Paper strengths and weaknesses =====
+
+Good:  This is a great topic, and is incredibly relevant.  There is a real
+system.  It's from an industrial group and is implemented against the
+leading commercial virtualization system.
+
+Less good: Not enough details on the underlying implementation for me
+to have a complete picture of what is going on.  Poor evaluation.
+
+                    ===== Comments for author(s) =====
+
+I really want to like this paper.  I spent the first few pages liking
+it a lot, spent the next few pages thinking it could be fixed so that
+I would like it a lot, and then by the end was left feeling like it
+probably still needs a bunch of work.  Here are my two main concerns:
+
+1. The mechanism used by the system to deduplicate is not sufficiently
+clear.
+
+I understand that you are hashing inline on the write path.  I
+understand the local management of the per-file write log on the host.
+And I think I understand how things are merged into the central
+index.  I like the idea of the virtual arena a lot.
+
+The things that are most unclear to me are around concurrent
+operations with the VMs that are running.  How do VM writes interact
+with in-flight remappings, for instance?  How about races in which two
+hosts try to convert a block in the virtual arena from unique to
+shared at the same time?  How about live migrations of a VM while the
+host that it is running on is in the middle of merging its write log?
+
+*************************************************************
+XXX Not fixed
+    [Irfan] Explicitly mention these concurrent operations are safe:
+       - How do VM writes interact with in-flight remappings
+       - Race: two hosts try to convert a block in the virtual arena U->S
+       - Live migrations of a VM while the host that it is running
+         on is in the middle of merging its write log?
+*************************************************************
+
+A lot of the system seems to hinge on the CoW and general file system
+metadata in VMFS -- it would be much more useful if you could present
+the facilities of a generalized file system (or even VMFS
+specifically) that are required to support your deduping and extend
+your description to that level of the file system.
+
+*************************************************************
+XXX Not fixed
+    [Irfan] Do we tie in the CoW discussion in the VMFS section well enough
+*************************************************************
+
+It sounds like VMFS is doing allocations in 1M chunks.  You've added
+an indirection layer that allows 4K sub-chunks.  But what do you do
+with the freed 4K blocks?  It doesn't sound like you are reorganizing
+shared blocks to pack these and then free 1M chunks -- instead it just
+sounds like you are creating a lot of holes that you can't reuse.
+What am I missing here?
+
+*************************************************************
+XXX Not fixed
+    [Irfan] Did we add the discussion on fragmentation/defrag?
+    [Irfan] Need to mention that the 4K blocks can be reused
+*************************************************************
+
+2. The evaluation is too light to demonstrate that this is a good
+idea.
+
+You show the rate of deduplication, but not the actual reclaimed
+space, and you measure boot up times.  The boot benchmark seems rather
+artificial -- per the text at the start of 4.2: wouldn't the VMs just
+be suspended overnight rather than booted?  And if so, wouldn't the
+boot storm be memory images rather than files on disk?
+
+*************************************************************
++++ Fixed
+    [Austin] He's right that we never give absolute numbers on space
+    reduction; we only give percentages.  I don't see why this is
+    really a problem, but we probably should give absolutes, at least
+    because they're really big and that makes them cool.
+*************************************************************
+
+*************************************************************
++++ Fixed
+    [Austin] Is his point about the VDI boot storm valid?  I know the
+    usual "hard" VDI workload is booting up tons of VM's, but is that
+    because it's realistic or just because it really stresses the
+    system?
+*************************************************************
+
+I didn't buy the fact that CoW introduced no performance overhead.
+You are turning your block device into swiss cheese and there are
+bound to be more seeks!  There need to be some workloads here that
+artificially deduplicate portions of an image, and some that age the
+file system, and these need to evaluate performance impact vs. space
+savings. 
+
+*************************************************************
+XXX Not fixed
+    [Irfan] Aging the FS?
+*************************************************************
+
+The overhead of the garbage collector is unevaluated, as is the rest
+of the deduplication process.  At what rate does your system reclaim
+blocks?
+
+*************************************************************
+XXX Not fixed
+    [Irfan] We haven't written the garbage collector, mention that
+*************************************************************
+
+===========================================================================
+                          USENIX '09 Review #198B
+                 Updated Saturday 7 Feb 2009 9:10:15am PST
+---------------------------------------------------------------------------
+    Paper #198: Decentralized Deduplication in SAN Cluster Filesystems
+---------------------------------------------------------------------------
+
+                      Overall merit: 5. Accept
+                 Reviewer expertise: 4. Expert (I have published on this
+                                        topic)
+
+                         ===== Paper summary =====
+
+This paper describes a deduplicating file system built on top of a
+SAN, where the SAN supports block reference counting and
+copy-on-write.  Except for the SAN, the system has no centralized
+component, and deduplication is performed in a decentralized manner by
+the SAN clients.  The system is designed for sharing storage across
+mostly-similar VM images.
+
+                ===== Paper strengths and weaknesses =====
+
+There are a lot of good design decisions here.  The features of the
+SAN (block reference counting, copy-on-write) are a huge advantage in
+building a system like this, and the authors have used them well.
+
+My main disappointment with the paper is that it seems to have been
+written in quite a hurry, and as such many of the details are unclear.
+Sections 3.3 and 3.4, for example, I find completely incomprehensible.
+
+Nonetheless, it's clear that the authors have built a real and useful
+system, and I think with careful sheparding, this could be a really
+wonderful paper.
+
+                    ===== Comments for author(s) =====
+
+I feel like the intro wanders, speaking too much in general about a
+problem of which you intend to tackle only one part.  I would rewrite
+it, leading off with paragraph 5 ("Shard file systems represent an
+excellent opportunity...").  As part of this rewrite, I would make it
+clear that a large part of what you've developed is a way to really
+take advantage of the SAN as a point of centralization for an
+otherwise decentralized system.  It's a great idea, and one that only
+currently comes out by reading between the lines.
+
+*************************************************************
++++ Fixed
+    [Irfan] Good points for a rewrite, need to handle
+*************************************************************
+
+Section 2, paragraph 6: is there not also a risk that the
+deduplication process could fall very far behind the mutator
+processes?
+
+*************************************************************
+XXX Not fixed
+    [Irfan] Need to mention explicitly that the
+    deduplication process could fall very far behind mutators
+*************************************************************
+
+Section 2, paragraph 8 ("There are two types of blocks in our
+system..."): this is what I was talking about above.  Move this idea
+up into the intro.  I was pretty lost until I got here.
+
+*************************************************************
++++ Fixed
+*************************************************************
+
+Section 2, last paragraph: There's a risk here.  A file that is made
+up such that each of its blocks first occurred in a completely
+different file from all the rest will see terrible read throughput in
+your system (as well as all other deduplicating file systems).  Even
+though each of those blocks occurs sequentially in some file, for this
+one composite file, they are not sequential at all.  In other words,
+fragmentation could still be a real problem, right?
+
+*************************************************************
+XXX Not fixed
+    [Irfan] I think what we say is that yes, blocks may not end
+    up in sequential order but that's OK because you are getting
+    back space savings. One of our goals whic is met is to not kill
+    perf for VMs or sets of blocks that haven't been dedup'ed.
+*************************************************************
+
+Section 3.2.1, first paragraph: very, very cool.  Second to last
+paragraph: very cool again.
+
+Section 3.2.2: it took me a bit of head scratching to figure out what
+you meant by a "packed, sorted list".  Maybe I should be embarrassed,
+or maybe you could just add one sentence describing what you mean.
+"...we bound the time required to update them": neat!
+
+*************************************************************
++++ Fixed
+*************************************************************
+
+Figure 3 is illegible on my printer.  The grayed out left side of the
+image, in particular.  Maybe this is why I don't understand the third
+paragraph of Section 3.3 at all.
+
+*************************************************************
++++ Fixed?
+*************************************************************
+
+Section 3.3.2, last paragraph: how are the files in which merge hints
+are stored locked?
+
+*************************************************************
+XXX Not fixed
+*************************************************************
+
+Section 3.3.3, first paragraph: what if the block is a duplicate whose
+merge hint has yet to be processed?  Second paragraph: what?
+
+*************************************************************
+XXX Not fixed
+*************************************************************
+
+(Section 3.3 as a whole confused me.  Maybe get a sharp friend who
+knows nothing about the system to read it over with you.)
+
+*************************************************************
++++ Fixed
+*************************************************************
+
+Section 3.4: proofread much?
+
+*************************************************************
++++ Fixed
+    [Austin] Four spelling/grammar errors fixed.  I assume that's what
+    he was referring to.
+*************************************************************
+
+Section 4.1, first paragraph, "VMs have a high degree of similarity
+reaching ~80%": that's different than the y-axis label on Figure 5,
+which says "reduction in storage space", right?  space' = space * 0.8,
+and space' = data common to all VMs + number of VMs * average unique
+data per VM.
+
+*************************************************************
++++ Fixed
+*************************************************************
+
+Section 4.1, third paragraph: what "offset-3584 data series"?  Do you
+mean "alignment adjusted data series"?
+
+*************************************************************
++++ Fixed
+*************************************************************
+
+Section 6 isn't much of a conclusion.  It's more of a quick summary
+and some future work.  Lessons learned would be more interesting here.
+
+*************************************************************
+XXX Not fixed
+*************************************************************
+
+===========================================================================
+                          USENIX '09 Review #198C
+                Updated Thursday 12 Feb 2009 4:40:07pm PST
+---------------------------------------------------------------------------
+    Paper #198: Decentralized Deduplication in SAN Cluster Filesystems
+---------------------------------------------------------------------------
+
+                      Overall merit: 2. Weak reject (I will argue against
+                                        this paper)
+                 Reviewer expertise: 3. Knowledgeable (I am familiar with
+                                        substantial work in the area)
+
+                         ===== Paper summary =====
+
+Dede describes a best-effort, asynchronous, non-intrusive,
+decentralized, de-duplication mechanism on data stored on shared
+storage. The authors make a point to claim it is for SAN based cluster
+filesystems, it could as well be applied to any shared storage
+mechanism (NAS).
+ 
+There are several artifacts that determine the design of Dede that are
+extremely influenced by the Virtual Machine environment in which it
+was implemented. Their files in the VMFS filesystem are different from
+those in conventional filesystems in many different ways - they
+represent virtual disks for VMs (vmdks) and are significantly larger
+and associated block sizes are larger too. Moreover, they make
+assumptions on locking patterns in the paper which are only applicable
+in the VM context.
+ 
+De-duplication is performed as a best-effort service, updates to vmdks
+are logged on individual hosts and periodically synced to a shared,
+distributed index on the shared storage. Merging of updates to the
+index enables realizing duplicate blocks and appropriate actions are
+made to the corresponding filesystems - local or remote. Complexities
+in updating/sharing a remote duplicate are handled by their notion of
+'virtual arenas'. Probably, one of the most interesting parts of the
+paper. Updates to index can involve some complexity in the face of
+stale data, they validate a duplicate by comparing the corresponding
+hashes.
+
+                ===== Paper strengths and weaknesses =====
+
+Strengths:
+* They are designing a system to provide de-duplication for primary VM
+  storage in a very constrained environment in a non-intrusive
+  fashion.
+* Issues introduced due to the asynchronous update of index as well as
+  data have been mitigated through innovative shared disk data
+  structures (index, arenas).
+Weaknesses:
+* Unclear how to extrapolate to other systems (e.g., those with files
+  smaller than vmdks)
+* Poor evaluation
+
+                    ===== Comments for author(s) =====
+
+Authors are unable to extrapolate and abstract some of the design
+choices wherever applicable. Specifically, around the idea of
+asynchronous, decentralized deduplication for other systems. Dede has
+been built for VMFS and it would be hard to see if any of the design
+constraints would be true in other filesystems. The metadata they are
+planning to hold on a per-file basis is relatively huge and would be
+inpractical in a traditional filesystem with a large number of
+files. The size and data structures used to implement the virtual
+arena has been glossed over, though it would make interesting reading
+from an overhead perspective.
+
+*************************************************************
++++ Fixed
+    [Austin] Section 2 explicitly states what we need out of the file
+    system and that we're otherwise agnostic, though it is true that
+    many of the design choices would probably have been different if
+    we were trying to solve for more general situations.  We should
+    make sure we're clear about our independence from VMFS throughout
+    the rest of the paper and we should also be clear that our system
+    is specifically designed for our target situation.
+*************************************************************
+
+*************************************************************
++++ Fixed
+    [Austin] We should count up bits and give sizes.
+*************************************************************
+
+Your algorithm involves figuring out duplicates at the granularity of
+4KB blocks whereas VMFS supports only 1MB blocks. This is dealt with
+by adding one level of indirection below each VMFS block, but not much
+is explained regarding this. Though the work is heavily influenced by
+VMFS and its access patterns and design, this important artifact has
+been glossed over in the paper.
+
+*************************************************************
++++ Fixed
+    [Austin] Perhaps we should weaken our claim that we are file
+    system agnostic to a conjecture that this would be easy to port to
+    other file systems.  Make it sound more like a design goal than a
+    fact.  We haven't _shown_ that we're FS agnostic.
+*************************************************************
+
+*************************************************************
++++ Fixed
+    [Austin] Say more about mixed block sizes in the overview
+*************************************************************
+ 
+The biggest disappointment is in the evaluation section. The
+evaluation scenarios lack thoroughness and depth leaving a lot of
+questions unanswered. It gives the notion that the evaluation was done
+in a hurry and is incomplete. Some interesting questions are:
+1. What would be DeDe's behaviour with an active workload in terms of
+   a) Performance overhead to the primary workload
+   b) Nature of de-duplication seen
+   c) Amount of stale data seen
+   d) De-dup metadata overhead - memory, disk bandwidth and space.
+2. De-dup metadata overhead as a percentage of the total data
+   stored. How does it compare against per-block metadata storage?
+3. Nature of the extra I/Os to the filesystem introduced due to
+   deduplication, how does it affect online workloads?
+4. Evaluate the efficacy of their asynchronous mechanism? Tradeoffs
+   with a synchronous mechanism
+5. What is the impact of locking during updates? What would have
+   happened if the locks were held for a shorter period of time.
+ 
+*************************************************************
+XXX Not fixed
+*************************************************************
+
+Section 4.3 makes the point that boot-up times for cold de-duped VMs
+and warm de-duped VMs are almost the same. The two scenarios will
+differ depending on the number of block writes during bootup. There is
+no mention of the number of writes during boot-up and it would be
+surprising if there are a lot of them.
+
+*************************************************************
+XXX Not fixed
+    [Irfan] We should count up #writes.
+*************************************************************
+
+===========================================================================
+                          USENIX '09 Review #198D
+                Updated Thursday 12 Mar 2009 1:31:24am PDT
+---------------------------------------------------------------------------
+    Paper #198: Decentralized Deduplication in SAN Cluster Filesystems
+---------------------------------------------------------------------------
+
+                      Overall merit: 4. Weak accept (I will argue for this
+                                        paper)
+                 Reviewer expertise: 3. Knowledgeable (I am familiar with
+                                        substantial work in the area)
+
+                         ===== Paper summary =====
+
+this paper is about dede, a dedup approach for a VMM SANFS.
+
+                ===== Paper strengths and weaknesses =====
+
++ good problem area
++ nice to hear about vmware stuff (including under-publicized vmfs)
+- writing
+- soon-to-be product or a summer project?
+
+                    ===== Comments for author(s) =====
+
+I found myself initially quite high on this paper and time has worn down my enthusiasm.
+
+The paper is about how to add dedup into VMFS, which basically is for storing large
+VM images as files. The client machines participate by generating logs of what they
+are writing, and then merging the info into a global index where dedup occurs.
+
+probably the biggest problem with the paper (other than the writing, detailed below)
+is the evaluation: it is pretty poor. The authors need to do a lot better here;
+comparison to other approaches, etc. This paper would be much better if
+you used the experiments to bring out some of the features of your approach!
+instead, we get a bare-bones "it works" graph or two.
+
+The paper is in need of some writing help. the authors use all sorts of terms but
+are not careful with them in the least. for example, you use the term "the file system"
+all over the place but there are a lot of file systems in your system (client OS, clients
+to their local drives?, server shared VMFS). be careful with these terms and your
+paper will become clearer.
+
+*************************************************************
+XXX Not fixed
+    [Irfan] Need to audit the paper for the usage of terms, FS, drives
+*************************************************************
+
+another thing that would help this paper: turn 2.1 (VMFS) into a full section describing
+VMFS. it would be a nice read for people.
+
+*************************************************************
++++ Fixed
+*************************************************************
+
+all of that said, i like the problem area and think it would be good to have more papers
+about storage in the VMM arena...
+
+===========================================================================
+                          USENIX '09 Review #198E
+                Updated Wednesday 11 Mar 2009 4:20:01pm PDT
+---------------------------------------------------------------------------
+    Paper #198: Decentralized Deduplication in SAN Cluster Filesystems
+---------------------------------------------------------------------------
+
+                      Overall merit: 5. Accept
+                 Reviewer expertise: 4. Expert (I have published on this
+                                        topic)
+
+                         ===== Paper summary =====
+
+Describes design and implementation of a dedup file system for SAN-based cluster 
+environments built as an extension to VMFS.
+
+                ===== Paper strengths and weaknesses =====
+
++ Important problem
++ Good design rationale, good design choices
++ Well written, easy to understand
++ Manages to say it all in 11 pages!
+
+                    ===== Comments for author(s) =====
+
+Good discussion of related work, without gratuitous citations.
+A figure would be helpful in Section 3.2.
+What is the "split-brain problem"?
+
+*************************************************************
++++ Fixed
+    [Irfan] Define split-brain
+*************************************************************
+
+===========================================================================
+                                  Comment
+    Paper #198: Decentralized Deduplication in SAN Cluster Filesystems
+---------------------------------------------------------------------------
+Conditional accept with shepherding.  The PC identified two areas in
+this paper that need attention:
+
+   1. A more thorough presentation of VMFS, and what apects of it you
+      depend on for this paper to work.
+
+   2. Subject to your ability to do it, a more thorough evaluation.

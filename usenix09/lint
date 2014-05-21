@@ -1,0 +1,78 @@
+#!/bin/sh
+
+GREP="grep -Hn --color=auto"
+
+# Use SANs, except when possessive (pattern isn't perfect)
+$GREP "SAN's" *.tex
+$GREP "a SANs" *.tex
+
+# Use VMs, except when possessive (pattern isn't perfect)
+$GREP "VM's" *.tex | grep -v "\\([Aa]\\|[Tt]he\\) VM's" | grep "VM's"
+$GREP "\\([Aa]\\|[Tt]he\\) VMs" *.tex
+
+# Use IO
+$GREP "I/O" *.tex
+
+# Use Iometer
+$GREP "IOmeter" *.tex
+$GREP "iometer" *.tex
+
+# Use \DeDe
+$GREP -i "[^\\]dede" *.tex | grep -v '\\newcommand' | grep "dede"
+
+# Non-breaking spaces should never follow breaking spaces
+$GREP " ~\\|^~" *.tex
+
+# Use, for example 4~KB
+$GREP "[0-9]~[TGMK][^B]" *.tex
+$GREP "[0-9][TGMK]B" *.tex
+$GREP "[0-9] [TGMK]B" *.tex
+
+# Use \ie and \eg
+$GREP "i\.e\." *.tex | grep -v '\\def\\ie' | grep "i\.e\."
+$GREP "e\.g\." *.tex | grep -v '\\def\\eg' | grep "e\.g\."
+
+# Use comma after e.g. and i.e.
+$GREP "\\\\ie[^,{]" *.tex
+$GREP "\\\\eg[^,{]" *.tex
+
+# Use \shaone
+$GREP "SHA-1" *.tex
+
+# Use "inumber"
+$GREP "i-number" *.tex
+
+# Use "ESX Server", in general
+$GREP "ESX" *.tex |grep -v "ESX Server" | grep "ESX"
+
+# Use "volume".  LUN is not even technically correct.
+$GREP "LUN" *.tex | grep -v "LUN reservations" | grep "LUN"
+
+# Use "Section" (Chicago Manual of Style says so)
+$GREP "section~" *.tex
+
+# Use "Figure" and "Table"
+$GREP "figure~" *.tex
+$GREP "table~" *.tex
+
+# Use $\sim$n~unit
+$GREP "\\\\sim *[0-9]" *.tex
+
+# Use "file system" (the Internet prefers this 1.1:1, but really we
+# just need to be consistent)
+$GREP -i "filesystem" *.tex
+
+# Use "content-addressable"
+$GREP -i "content addressable" *.tex
+
+# Use "sub-block"
+$GREP -i "sub block" *.tex
+$GREP -i "sub$" *.tex
+
+# Use "userspace"
+$GREP -i "user space" *.tex
+
+# Use "in-band"
+$GREP -i "in-line" *.tex
+
+exit 0

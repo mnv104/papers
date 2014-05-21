@@ -1,0 +1,3 @@
+% -*- LaTeX -*-
+
+\newcommand{\nicefrac}[2]{\frac{^{#1}}{_{#2}}}

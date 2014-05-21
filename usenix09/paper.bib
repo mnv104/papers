@@ -1,0 +1,424 @@
+@string{aBoston = {Boston} # MA}
+
+@string{aSanAntonio = {San Antonio} # TX}
+
+@Misc{vmfsdatasheet,
+  author       = {{VMware, Inc.}},
+  title        = {{VMFS} Datasheet},
+  note         = {\url{http://www.vmware.com/pdf/vmfs_datasheet.pdf}},
+}
+
+@Misc{centeradatasheet,
+  key          = {EMC Centera, Content addressed storage},
+  title        = {{EMC} {Centera} Datasheet},
+  note         = {\url{http://www.emc.com/products/detail/hardware/centera.htm}},
+}
+
+@Misc{netappdatasheet,
+  key          = {},
+  title        = {{EMC} {Centera} Datasheet},
+  note         = {\url{http://www.emc.com/products/detail/hardware/centera.htm}},
+}
+
+% XXX Haven't read
+@InProceedings{schmuck02gpfs,
+  author       = {Frank Schmuck and Roger Haskin},
+  title        = {{GPFS}: A Shared-Disk File System for Large
+                  Computing Clusters},
+  crossref     = {fast02},
+  url          = {https://www.usenix.org/publications/library/proceedings/fast02/schmuck.html},
+  abstract     = {GPFS is IBM's parallel, shared-disk file system for
+                  cluster computers, available on the RS/6000 SP
+                  parallel supercomputer and on Linux clusters. GPFS
+                  is used on many of the largest supercomputers in the
+                  world. GPFS was built on many of the ideas that were
+                  developed in the academic community over the last
+                  several years, particularly distributed locking and
+                  recovery technology. To date it has been a matter of
+                  conjecture how well these ideas scale. We have had
+                  the opportunity to test those limits in the context
+                  of a product that runs on the largest systems in
+                  existence. While in many cases existing ideas scaled
+                  well, new approaches were necessary in many key
+                  areas. This paper describes GPFS, and discusses how
+                  distributed locking and recovery techniques were
+                  extended to scale to large clusters.},
+}
+
+% XXX Haven't read
+@InProceedings{preslan99gfs,
+  author       = {Kenneth W. Preslan and Andrew P. Barry and Jonathan
+                  E. Brassow and Grant M. Erickson and Erling Nygaard
+                  and Christopher J. Sabol and Steven R. Soltis and
+                  David C. Teigland and Matthew T. O'Keefe},
+  title        = {A 64-bit, Shared Disk File System for {L}inux},
+  crossref     = {mss99},
+  url          = {http://ieeexplore.ieee.org/xpl/freeabs_all.jsp?arnumber=829973},
+  abstract     = {In computer systems today, speed and responsiveness
+                  is often determined by network and storage subsystem
+                  performance. Faster, more scalable networking
+                  interfaces like Fibre Channel and Gigabit Ethernet
+                  provide the scaffolding from which higher
+                  performance implementations may be constructed, but
+                  new thinking is required about how machines interact
+                  with network-enabled storage devices.  \par We have
+                  developed a Linux file system called GFS (the Global
+                  File System) that allows multiple Linux machines to
+                  access and share disk and tape devices on a Fibre
+                  Channel or SCSI storage network. We plan to extend
+                  GFS by transporting packetized SCSI commands over IP
+                  so that any GFS-enabled Linux machine can access
+                  shared network devices. GFS will perform well as a
+                  local file system, as a traditional network file
+                  system running over LP, and as a high-performance
+                  cluster file system running over storage networks
+                  like Fibre Channel. GFS device sharing provides a
+                  key cluster-enabling technology for Linux, helping
+                  to bring the availability, scalability, and load
+                  balancing benefits of clustering to Linux.  \par Our
+                  goal is to develop a scalable, (in number of clients
+                  and devices, capacity, connectivity, and bandwidth)
+                  server-less file system that integrates IF-based
+                  network attached storage (NAS) and
+                  Fibre-Channel-based storage area networks (SAN). We
+                  call this new architecture Storage Area
+                  InterNetworking (SAINT). It exploits the speed and
+                  device scalability of SAN clusters, and provides the
+                  client scalability and network interoperability of
+                  NAS appliances.  \par Our Linux port shows that the
+                  GFS architecture is portable across different
+                  platforms, and we are currently working on a port to
+                  NetBSD. The GFS code is open source (GPL) software
+                  freely available on the Internet at
+                  \url{http://gfs.lcse.umn.edu}},
+}
+
+@inproceedings{nath06vmcas,
+   author = {Partho Nath and Michael A. Kozuch and David R. O'Hallaron and Jan
+Harkes and M. Satyanarayanan and Niraj Tolia and Matt Toups},
+   crossref = {atec06},
+   url = {http://www.usenix.org/event/usenix06/tech/nath.html},
+   title = {Design tradeoffs in applying content addressable storage to
+enterprise-scale systems based on virtual machines},
+   abstract = {This paper analyzes the usage data from a live
+   deployment of an enterprise client management system based on
+virtual machine (VM) technology. Over a period of seven
+months, twenty-three volunteers used VM-based computing
+environments hosted by the system and created over 800
+checkpoints of VM state, where each checkpoint included the
+virtual memory and disk states. Using this data, we study the
+design tradeoffs in applying content addressable storage (CAS)
+to such VM-based systems. In particular, we explore the impact
+on storage requirements and network load of different privacy
+properties and data granularities in the design of the
+underlying CAS system. The study clearly demonstrates that
+relaxing privacy can reduce the resource requirements of the
+system, and identifies designs that provide reasonable
+compromises between privacy and resource demands.}
+}
+
+@inproceedings{nath08hpccas,
+   author = {Partho Nath and Bhuvan Urgaonkar and Anand Sivasubramaniam},
+   crossref = {hpdc08},
+   title = {Evaluating the usefulness of content addressable storage for
+   high-performance data intensive applications},
+   abstract = {
+      Content Addressable Storage (CAS) is a data representation technique that
+         operates by partitioning a given data-set into non-intersecting units
+         called chunks and then employing techniques to efficiently recognize
+         chunks occurring multiple times. This allows CAS to eliminate
+         duplicate instances of such chunks, resulting in reduced storage space
+         compared to conventional representations of data. CAS is an attractive
+         technique for reducing the storage and network bandwidth needs of
+         performance-sensitive, data-intensive applications in a variety of
+         domains. These include enterprise applications, Web-based e-commerce
+         or entertainment services and highly parallel scientific/engineering
+         applications and simulations, to name a few.
+
+         In this paper, we conduct an empirical evaluation of the benefits
+         offered by CAS to a variety of real-world data-intensive applications.
+         The savings offered by CAS depend crucially on (i) the nature of the
+         data-set itself and (ii) the chunk-size that CAS employs. We
+         investigate the impact of both these factors on disk space savings,
+      savings in network bandwidth, and error resilience of data. We find that
+         a chunk-size of 1 KB can provide up to 84\% savings in disk space and
+         even higher savings in network bandwidth whilst trading off error
+         resilience and incurring 14\% CAS related overheads. Drawing upon
+         lessons learned from our study, we provide insights on (i) the choice
+         of the chunk-size for effective space savings and (ii) the use of
+         selective data replication to counter the loss of error resilience
+         caused by CAS.
+   }
+}
+
+@inproceedings{tolia03opportunisticuse,
+   author = {Niraj Tolia and Niraj Tolia and Michael Kozuch and Michael
+   Kozuch and Mahadev Satyanarayanan and Mahadev Satyanarayanan and Brad
+   Karp and Thomas Bressoud and Thomas Bressoud and Adrian Perrig and
+   Adrian Perrig},
+   url = {https://db.usenix.org/events/usenix03/tech/tolia.html},
+   title = {Opportunistic use of content addressable storage for
+   distributed file systems},
+   crossref = {atec03},
+   abstract= {
+      Motivated by the prospect of readily available Content Addressable
+         Storage (CAS), we introduce the concept of file recipes. A file's
+         recipe is a first-class file system object listing content hashes that
+         describe the data blocks composing the file. File recipes provide
+         applications with instructions for reconstructing the original file
+         from available CAS data blocks. We describe one such application of
+         recipes, the CASPER distributed file system. A CASPER client
+         opportunistically fetches blocks from nearby CAS providers to improve
+         its performance when the connection to a file server traverses a
+         low-bandwidth path. We use measurements of our prototype to evaluate
+         its performance under varying network conditions. Our results
+         demonstrate significant improvements in execution times of
+         applications that use a network file system. We conclude by describing
+         fuzzy block matching, a promising technique for using approximately
+         matching blocks on CAS providers to reconstitute the exact desired
+         contents of a file at a client. 
+   }
+}
+
+@inproceedings{rhea-foundation,
+ author = {Sean Rhea and Russ Cox and Alex Pesterev},
+ title = {Fast, inexpensive content-addressed storage in {F}oundation},
+ crossref = {atec08},
+ xpages = {143--156},
+ }
+
+@inproceedings{murali-capfs,
+ author = {Murali Vilayannur and Partho Nath and Anand Sivasubramaniam},
+ title = {Providing tunable consistency for a parallel file store},
+ crossref = {fast05},
+ }
+
+@string{atec = {{USENIX} {A}nnual {T}echnical {C}onference}}
+@string{atec03 = ATEC # { ({ATEC} '03)}}
+@string{atec06 = ATEC # { ({ATEC} '06)}}
+@string{atec08 = ATEC # { ({ATEC} '08)}}
+@string{wiov = {{W}orkshop on {I/O} {V}irtualization}}
+@string{wiov08 = WIOV # { ({WIOV} '08)}}
+
+@proceedings{atec03,
+  title = the # atec03,
+  booktitle = procofthe # atec03,
+  month = jun,
+  year = 2003,
+  address = aSanAntonio,
+  organization = oUSENIX
+}
+
+@proceedings{atec06,
+  title = the # atec06,
+  booktitle = procofthe # atec06,
+  month = jun,
+  year = 2006,
+  address = aBoston,
+  organization = oUSENIX
+}
+
+@proceedings{atec08,
+  title = the # atec08,
+  booktitle = procofthe # atec08,
+  month = jun,
+  year = 2008,
+  address = aBoston,
+  organization = oUSENIX
+}
+
+@string{hpdc = {{H}igh {P}erformance {D}istributed {C}omputing}}
+
+@string{hpdc08 = {17th } # HPDC # { ({HPDC} '08)}}
+
+@proceedings{hpdc08,
+  title = the # hpdc08,
+  booktitle = procofthe # hpdc08,
+  month = jun,
+  year = 2008,
+  address = aBoston,
+  isbn = {978-1-59593-997-5},
+  organization = oACM
+}
+
+@string{FAST05 = "4th " # FAST # " ({FAST} '05)"}
+
+@proceedings{fast05,
+  title = the # fast05,
+  booktitle = procofthe # fast05,
+  month = dec,
+  year = 2005,
+  address = asanfrancisco,
+  organization = ousenix
+}
+
+@inproceedings{cas-experiences,
+   author = {Anthony Liguori and Eric Van Hensbergen},
+   crossref = {wiov08},
+   url = {http://www.usenix.org/events/wiov08/tech/full_papers/liguori/liguori.pdf},
+   title = {Experiences with Content Addressable Storage and Virtual Disks},
+   abstract = {Efficiently managing storage is important for virtualized computing environments. Its importance is magnified by developments such as cloud computing which consolidate many thousands of virtual machines (and their associated storage). The nature of this storage is such that there is a large amount of duplication between otherwise discreet virtual machines. Building upon previous work in content addressable storage, we have built a prototype for consolidating virtual disk images using a service-oriented file system. It provides a hierarchical organization, manages historical snapshots of drive images, and takes steps to optimize encoding based on partition type and file system. In this paper we present our experiences with building this prototype and using it to store a variety of drive images for QEMU and the Linux Kernel Virtual Machine (KVM).}
+}
+
+@proceedings{wiov08,
+  title = the # wiov08,
+  booktitle = procofthe # wiov08,
+  month = dec,
+  year = 2008,
+  address = asandiego,
+  organization = ousenix
+}
+
+@inproceedings{lbfs,
+ author = {Athicha Muthitacharoen and Benjie Chen and David Mazi\`{e}res},
+ title = {A low-bandwidth network file system},
+ crossref = {sosp01},
+ xpages = {174--187},
+ doi = {http://doi.acm.org/10.1145/502034.502052},
+}
+
+@techreport{fips-180-2,
+  key = {FIPS 180-2},
+  citeulike-article-id = {2947523},
+  institution = {National Institute of Standards and Technology},
+  keywords = {cryptography, hash, standard},
+  month = aug,
+  title = {{FIPS} 180-2, Secure Hash Standard},
+  url = {http://csrc.nist.gov/publications/fips/fips180-2/fips180-2withchangenotice.pdf},
+  year = {2002}
+}
+
+@techreport{vmware-align,
+  author = {{VMware, Inc.}},
+  month = aug,
+  title = {Recommendations for Aligning {VMFS} Partitions},
+  url = {http://www.vmware.com/pdf/esx3_partition_align.pdf},
+  year = {2006}
+}
+
+@article{ibm-storage-tank,
+ author = {J. Menon and D. A. Pease and R. Rees and L. Duyanovich and B. Hillsberg},
+ title = {{IBM} Storage Tank---A heterogeneous scalable {SAN} file system},
+ journal = {IBM Systems Journal},
+ volume = {42},
+ number = {2},
+ year = {2003},
+ issn = {0018-8670},
+ xpages = {250--267},
+ publisher = {IBM Corp.},
+ address = {Riverton} # NJ,
+ }
+
+@string{HOTOS03 = "9th Hot Topics in Operating Systems (HOTOS '03)"}
+@inproceedings{henson-compare-by-hash,
+ author = {Val Henson},
+ title = {An analysis of compare-by-hash},
+ booktitle = procofthe # HOTOS03,
+ month = may,
+ year = {2003},
+ xpages = {3},
+ organization = oUSENIX,
+ address = {Lihue} # HI,
+ }
+
+@string{ATEC06 = "USENIX Annual Technical Conference (ATEC '06)"}
+@inproceedings{black-compare-by-hash,
+ author = {J. Black},
+ title = {Compare-by-hash: a reasoned analysis},
+ booktitle = procofthe # ATEC06,
+ month = may,
+ year = {2006},
+ xpages = {7},
+ organization = oUSENIX,
+ address = {Boston} # MA,
+ }
+
+@inproceedings{waldspurger-osdi,
+	abstract = {VMware ESX Server is a thin software layer designed to multiplex hardware resources efficiently among virtual machines running unmodified commodity operating systems.  This paper introduces several novel ESX Server mechanisms and policies for managing memory.  A <em>ballooning</em> technique reclaims the pages considered least valuable by the operating system running in a virtual machine.  An <em>idle memory tax</em> achieves efficient memory utilization while maintaining performance isolation guarantees.  <em>Content-based page sharing</em> and <em>hot I/O page remapping</em> exploit transparent page remapping to eliminate redundancy and reduce copying overheads. These techniques are combined to efficiently support virtual machine workloads that overcommit memory.},
+	author = {Waldspurger, Carl  A.},
+        crossref = {osdi02},
+	citeulike-article-id = {477555},
+	keywords = {resource-management, sharing, virtualization},
+	title = {Memory Resource Management in {VMware} {ESX} {Server}},
+	url = {http://www.usenix.org/events/osdi02/tech/waldspurger.html}
+}
+
+@inproceedings{hydrastor-fast09,
+ author = {Cezary Dubnicki and Leszek Gryz and Lukasz Heldt and Michal Kaczmarczyk and Wojciech Kilian and Przemyslaw Strzelczak and Jerzy Szczepkowski and Cristian Ungureanu and Michal Welnicki},
+ title = {Hydrastor: A Scalable Secondary Storage},
+ crossref = {fast09},
+}
+
+@book{esx-doc,
+	Author = {{VMware, Inc.}},
+	Note = {\url{http://www.vmware.com/support/pubs/}},
+	Title = {Introduction to {VMware} {I}nfrastructure},
+	Year = {2007}}
+
+@Misc{vdi-doc,
+  title        = {{VMware} {V}irtual {D}esktop {I}nfrastructure {(VDI)} Datasheet},
+  author = {{VMware, Inc.}},
+  note = {\url{http://www.vmware.com/files/pdf/vdi_datasheet.pdf}},
+  year = {2008}
+}
+
+@Misc{netapp-asis-website,
+  key = {NetApp Deduplication},
+  title        = {{N}etApp {D}eduplication {(ASIS)}},
+  institution = {NetApp},
+  note = {\url{http://www.netapp.com/us/products/platform-os/dedupe.html}},
+}
+
+@Misc{vdi-private-email,
+  key = {VMware VDI},
+  title        = {Private email conversation with {K}en {B}arr and {S}unil {S}atnur of {VMware, Inc.}},
+  month        = {Dec},
+  year = {2008}
+}
+
+@article{next-fit,
+   author = {C. Bays},
+   title = {A comparison of next-fit, first-fit, and best-fit},
+   journal = {Communications of the ACM},
+   volume = {20},
+   number = {3},
+   year = {1977},
+   issn = {0001-0782},
+   xpages = {191--192},
+   publisher = {ACM},
+   address = {New York, NY, USA},
+}
+
+@MISC{dvdstore,
+    title = "{DVD Store}",
+    note = {\url{http://delltechcenter.com/page/DVD+store}},
+    author = "{Dell, Inc.}",
+}
+
+@inproceedings{srs-vpact09,
+    author = {Ajay Gulati and Chethan Kumar and Irfan Ahmad},
+    title = {Storage Workload Characterization and Consolidation in Virtualized Environments},
+     booktitle = {2nd International Workshop on Virtualization Performance: Analysis, Characterization, and Tools (VPACT)},
+      year = {2009},
+}
+
+@MISC{iometer,
+    key = {iometer},
+    title = "Iometer",
+    note = "\url{http://www.iometer.org/}",
+}
+
+@Misc{vdi-benchmark,
+  title  = {Performance of Virtual Desktops in a {VM}ware {I}nfrastructure 3 Environment},
+  author = {{VMware, Inc.}},
+  note = {\url{http://www.vmware.com/resources/techresources/1085}},
+  year = {2009}
+}
+
+
+
+% Local Variables:
+% bibtex-align-at-equal-sign: t
+% bibtex-comma-after-last-field: t
+% bibtex-entry-format: (opts-or-alts required-fields numerical-fields realign last-comma)
+% End:

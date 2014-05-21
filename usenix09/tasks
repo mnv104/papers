@@ -1,0 +1,111 @@
+Paper
+ + Design of VMFS
+   + Metadata structure
+   + COW mechanism
+   + Layout of resources such as 1M and 4K blocks
+   + Handling of race conditions
+ + Change claim that DeDe is file-system agnostic
+ + Better algorithms description
+ + The SAN is our central point
+ + Add NSF acknowledgment
+ + Acknowledge anonymous reviewers and shepherd
+ + Follow USENIX formatting
+     URL: http://www.usenix.org/events/usenix09/cfp/requirements.html
+ + Figures
+   + Make graph style consistent
+   + Remove hash shading convention.  It distracts
+   + Make index transitions diagram shading consistent with other
+     figures
+ - Check that it prints well in black-and-white
+ + Final spell check
+ - Final lint
+   + Consistent section title capitalization
+   + Double check bibliography
+   - Widows and orphans
+
+Evaluation
+ - Microbenchmarks
+     Runtime performance impact
+     + SHA-1 computation in write path
+         Notes: Run an iometer workload that writes to a 5GB disk and
+         measure its rate with and without write monitor
+     - COW specialization microbenchmark
+         Notes: Create a 257M vDisk.  While monitoring, overwrite its
+         first 256M with zeros (or use random data and two copies).
+         Note that you can't dedup more than 256M of zeros.  Use
+         iometer to overwrite this and measure write rate difference
+         with overwriting a non-COW vDisk.
+     + Impact of additional metadata
+         Notes: Write and read rate to a 5G fragmented vDisk versus
+         rates to a regular vDisk.
+     Index update performance
+     + COW sharing microbenchmark
+     + Fragmenting operation microbenchmark
+     + Overall deduplication rate
+ - Macrobenchmarks
+     Notes: Four copies of golden VM; run 5 iterations of benchmark;
+     shut down; X; run 5 more iterations of benchmark and keep results
+   - Baseline
+       Notes: X = Nothing
+   - Just fragmented?
+       Notes: X = Fragment all blocks in all 4 VM's
+   - Just fragmented and COW'd?
+       Notes: X = Fragment all blocks and mark everything COW (keep
+       everything contiguous, unlike dedup)
+   - Full deduplication
+       Notes: X = Run indexer
+     - Measure fragmentation?
+ + Space savings
+   + Clean up linked clones discussion
+ + Space overhead
+   + Calculate size of index
+       Notes: Our current implementation stores *much* bigger file
+       ID's than it needs to.
+   + Calculate size of additional metadata
+       Notes: In terms of total file size.  There's ~256 times as much
+       metadata as before, but compared to the total file size, it's
+       still not much.
+
+Outstanding experiments
+ - COW specialization overhead with Murali's overwriting patch
+ - SHA-1 computation with Irfan's (worldlet scheduling|2 VCPUs) change
+ - Source of overhead from mixed block sizes?
+
+Bugs
+ + COW share operations are not updating PB's on disk
+     Notes: Failed to mark as dirty because of inverted condition
+ + PBC memory leak on clear
+     Notes: ARRAYSIZE used on pointer
+ + PBC memory leak on re-initialize
+     Notes: Re-initialize was not setting new numPBs
+ + Direct-to-indirect addressing transition fails with fragment blocks
+     Notes: Needed to clear PBC
+ + Thin FPB's are not zeroed
+     Notes: FPB's were allocated without zeroing
+ + Fragmenting NULL sub-blocks wastes time
+     Notes: Fil3_FragmentBlock treats as NULL file block and tries to fragment
+ + First arena COW operation per 1 MB block fails
+     Notes: NULL sub-block pointer not considered leaf
+ + Fix the current hack that deals with zero blocks
+     Notes: The monitor must report these in case it's an overwrite
+ + Report skip records so we don't dedup partially written blocks
+ + Resolving offsets in fragments during async IO causes blocking IO
+     Notes: Fix impacts typical performance as well
+ - SHA-1 in the write path slows down IO far more than it should
+ - Fragmented blocks slow down the IO rate even when the FPB's should
+   be in the PBC and the blocks should be sequential
+     Notes: Sub block address resolution requires a lookup in the SB
+     system file.  If we fix this (by priming the PBC cache), we
+     should also be able to get rid of the no-async-address-resolution
+     modification that decreased performance all around.
+   - Are the SG arrays being heap allocated (> 8 elements)?  Decrease
+     the iometer IO size and check the gap.
+   - Murali's not seeing much overhead on sda09
+
+Implementation
+ + Thin arena
+ - Improve sub-block allocation scheme
+ - Batch COW operations
+ - Fix the overhead of write monitoring
+   - Fix the worldlet scheduling anomaly
+   - Or make SHA-1 computation asynchronous

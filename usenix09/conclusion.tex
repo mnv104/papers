@@ -1,0 +1,58 @@
+% -*- TeX-master: "paper.tex"; TeX-PDF-mode: t; ispell-local-pdict: "words" -*-
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+In this paper, we studied deduplication in the context of
+decentralized cluster file systems. We have described a novel software
+system, \DeDe, which provides block-level deduplication
+of a live, shared file system without any central coordination.
+Furthermore, \DeDe builds atop an existing file system without
+violating the file system's abstractions, allowing it to take
+advantage of regular file system block layout policies and in-place
+updates to unique data.
+Using our prototype implementation, we demonstrated that this approach
+can achieve up to 80\% space reduction with minor performance overhead
+on realistic workloads.
+
+We believe our techniques are applicable beyond virtual machine
+storage and plan to examine \DeDe in other settings in the future.  We
+also plan to explore alternate indexing schemes
+that allow for greater control of deduplication policy.  For example,
+high-frequency deduplication could prevent temporary file system bloat
+during operations that produce large amounts of duplicate data (\eg,
+mass software updates), and deferral of merge
+operations could help reduce file system fragmentation.  Additionally,
+we plan to further explore the trade-offs mentioned in this paper,
+such as block size versus metadata overhead, in-band versus
+out-of-band hashing, and sequential versus random index updates.
+
+\DeDe represents just one of the many applications of deduplication to
+virtual machine environments.  We believe that the next step for
+deduplication is to integrate and unify its application to file
+systems, memory compression, network bandwidth optimization, etc., to
+achieve end-to-end space and performance optimization.
+
+% We believe there is interesting work to be done in integrating and
+% unifying these various applications of deduplication---taking
+% advantage of data already available in a remote file system when
+% transferring files over a network, reducing redundant IO operations by
+% taking advantage of pages already in memory--
+
+% Online defragmentation and better block allocation policies
+
+% Really, people have only scratched the surface on deduplicating live
+% file systems, be they SAN or regular.
+
+% Old future work
+%
+% For future work, we'd like to expand the evaluation of our system to
+% more realistic scenarios. Exploring applications of our technique
+% beyond virtual machines seems promising since previous work has shown
+% that shared file systems in general are likely to contain a lot of
+% duplicate data. We plan to extend the \DeDe prototype and experiment
+% with various tradeoffs including block sizes. We would also like to
+% explore integrating more deeply with the hypervisor to try to reduce
+% redundant IO operations.
+
+\XXX[State something interesting.]
